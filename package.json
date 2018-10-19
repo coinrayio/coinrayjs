@@ -1,0 +1,36 @@
+{
+  "name": "coinrayjs",
+  "version": "0.0.16",
+  "description": "Coinray.io official JavaScript client library",
+  "main": "dist/coinray.js",
+  "scripts": {
+    "replace_version_in_dist": "node replace_version_in_dist.js",
+    "build": "babel src --out-dir dist --ignore \"src/**/*.spec.js\",\"src/**/*.test.js\" && npm run replace_version_in_dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/coinrayio/coinrayjs.git"
+  },
+  "keywords": [
+    "coinray",
+    "coinrayio"
+  ],
+  "dependencies": {
+    "phoenix": "^1.3.4",
+    "ws": "^6.0.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.1.0",
+    "@babel/core": "^7.1.0",
+    "@babel/plugin-proposal-class-properties": "^7.1.0",
+    "@babel/plugin-proposal-function-bind": "^7.0.0",
+    "@babel/preset-env": "^7.1.0",
+    "replace-in-file": "^3.4.2"
+  },
+  "author": "Redmar Kerkhoff <redmar@coinray.io> (https://coinray.io)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/coinrayio/coinrayjs/issues"
+  },
+  "homepage": "https://github.com/coinrayio/coinrayjs#readme"
+}
