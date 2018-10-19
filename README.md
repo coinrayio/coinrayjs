@@ -3,7 +3,7 @@
 ## Usage
 
 ```js
-import { Coinray } from "coinray"
+import { Coinray } from "coinrayjs"
 
 let coinray = new Coinray("wss://ws.coinray.io/socket", { token: "YOUR_TOKEN_HERE", debug: true });
 
