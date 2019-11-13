@@ -2,7 +2,6 @@ import {Socket} from "phoenix";
 import WebSocket from "ws";
 
 const TIMEOUT = 10000;
-const COINRAYJS_VERSION = "___COINRAYJS_VERSION___";
 
 export default class Coinray {
   constructor(url, opts, onMessage) {
@@ -30,7 +29,7 @@ export default class Coinray {
     this.socket = new Socket(url, {
       transport: WebSocket,
       token: this.token,
-      params: {token: this.token, client: "coinrayjs", version: COINRAYJS_VERSION}
+      params: {token: this.token, client: "coinrayjs", version: VERSION}
     });
     this.socket.onOpen(event => this.debug("socket.onOpen: connected!"));
     this.socket.onError(event => this.debug("socket.onError: can't connect!", event.message));
