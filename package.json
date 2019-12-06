@@ -1,7 +1,12 @@
 {
   "name": "coinrayjs",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "Javascript Library for Coinray.io",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "development@coinray.io",
+  "license": "ISC",
+  "private": false,
   "scripts": {
     "test": "jest --detectOpenHandles",
     "test:watch": "jest --detectOpenHandles --watch",
@@ -12,15 +17,6 @@
     "prepare": "npm run build",
     "bundle": "webpack"
   },
-  "keywords": [
-    "coinray",
-    "coinrayio"
-  ],
-  "author": "development@coinray.io",
-  "license": "ISC",
-  "main": "dist/lib/index.js",
-  "types": "dist/lib/index.d.ts",
-  "private": false,
   "dependencies": {
     "@babel/runtime": "^7.3.1",
     "axios": "^0.19.0",
@@ -57,6 +53,10 @@
     "webpack": "^4.35.2",
     "webpack-cli": "^3.3.5"
   },
+  "keywords": [
+    "coinray",
+    "coinrayio"
+  ],
   "bugs": {
     "url": "https://github.com/coinrayio/coinrayjs/issues"
   },
