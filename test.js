@@ -19,13 +19,13 @@ const handle3 = api.subscribeCandles({ coinraySymbol: "BINA_USDT_BTC", resolutio
 
 // api.unsubscribeTrades({coinraySymbol: "BINA_BTC_ETH"}, handle);
 
-api.fetchCandles({ coinraySymbol: "BINA_USDT_BTC", resolution: "60" }).then((candles) => {
-  console.log(candles.length)
-});
-
-api.fetchLastCandle({ coinraySymbol: "BINA_USDT_BTC", resolution: "60" }).then((candles) => {
-  console.log(candles)
-});
+// api.fetchCandles({ coinraySymbol: "BINA_USDT_BTC", resolution: "60" }).then((candles) => {
+//   console.log(candles.length)
+// });
+//
+// api.fetchLastCandle({ coinraySymbol: "BINA_USDT_BTC", resolution: "60" }).then((candles) => {
+//   console.log(candles)
+// });
 
 api.onOpen((test) => {
   console.log("onOpen", test)

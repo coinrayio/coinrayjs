@@ -5,15 +5,19 @@
 ```js
 import { Coinray } from "coinrayjs"
 
-let coinray = new Coinray("wss://ws.coinray.io/socket", { token: "YOUR_TOKEN_HERE", debug: true });
+let coinray = new Coinray(token);
+```
 
-coinray.subscribeTrades("BINA_BTC_ETH", (msg) => console.log("BINA_BTC_ETH:", msg));
-coinray.subscribeTrades("BTRX_BTC_ETH", (msg) => console.log("BTRX_BTC_ETH:", msg));
-coinray.subscribeTrades("HITB_BTC_ETH", (msg) => console.log("HITB_BTC_ETH:", msg));
+### Subscribe to trades
+```js
+const handle = coinray.subscribeTrades({coinraySymbol: "BINA_BTC_ETH"}, (msg) => console.log("BINA_BTC_ETH:", msg));
+coinray.unsubscribeTrades({coinraySymbol: "BINA_BTC_ETH"}, handle);
+```
 
-coinray.unsubscribeTrades("BINA_BTC_ETH");
-coinray.unsubscribeTrades("BTRX_BTC_ETH");
-coinray.unsubscribeTrades("HITB_BTC_ETH");
+### Subscribe to candles
+```js
+const handle = coinray.subscribeCandles({coinraySymbol: "BINA_BTC_ETH", resolution: "60"}, (msg) => console.log("BINA_BTC_ETH:", msg));
+coinray.subscribeCandles({coinraySymbol: "BINA_BTC_ETH", resolution: "60"}, handle);
 ```
 
 ---

@@ -183,18 +183,17 @@ export default class Coinray {
 
   }
 
-  subscribeCandles({coinraySymbol, resolution}: CandleParam, callback: (payload: any) => void) {
+  async subscribeCandles({coinraySymbol, resolution}: CandleParam, callback: (payload: any) => void) {
     const candleId = `${coinraySymbol}-${resolution}`;
 
     if (this._candleListeners[candleId] && this._candleListeners[candleId].length > 0) {
       this._candleListeners[candleId].push(callback);
       return callback
     }
-
     this._candleListeners[candleId] = [callback];
-    this._candles[candleId] = this._candles[candleId] || {
-      time: 0,
-    };
+
+    const lastCandle = await this.fetchLastCandle({coinraySymbol, resolution});
+    this._candles[candleId] = lastCandle || {time: 0};
 
     const candleCallback = ({coinraySymbol, trades}: any) => {
       const callbacks = Object.values(this._candleListeners[candleId]) as [];
@@ -243,16 +242,19 @@ export default class Coinray {
       endTime: end
     });
 
+
     return result.map(Coinray._parseCandle);
   }
 
-  async fetchLastCandle({coinraySymbol, resolution}: CandleParam): Promise<Candle> {
+  async fetchLastCandle({coinraySymbol, resolution}: CandleParam): Promise<Candle | undefined> {
     const {result} = await this._request("candles/latest", {
       symbol: coinraySymbol,
       resolution: resolution,
     });
 
-    return Coinray._parseCandle(result[0])
+    if (result.length > 0) {
+      return Coinray._parseCandle(result[0])
+    }
   }
 
   private get socket(): Socket {
@@ -304,15 +306,20 @@ export default class Coinray {
     }
   }
 
-  private static _parseCandle([time, open, high, low, close, baseVolume, quoteVolume]: any): Candle {
-    return {
-      time,
-      open: parseFloat(open),
-      high: parseFloat(high),
-      low: parseFloat(low),
-      close: parseFloat(close),
-      baseVolume: parseFloat(baseVolume),
-      quoteVolume: parseFloat(quoteVolume),
+  private static _parseCandle(result: any): Candle {
+    if (result) {
+      const [time, open, high, low, close, baseVolume, quoteVolume]: any = result;
+      return {
+        time,
+        open: parseFloat(open),
+        high: parseFloat(high),
+        low: parseFloat(low),
+        close: parseFloat(close),
+        baseVolume: parseFloat(baseVolume),
+        quoteVolume: parseFloat(quoteVolume),
+      }
+    } else {
+      throw new Error("Candle")
     }
   }
 
