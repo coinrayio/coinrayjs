@@ -4,10 +4,7 @@ import {camelize, createJWT, encryptPayload, jwtExpired, MINUTES, signHMAC} from
 import _ from "lodash"
 import {JWK} from "node-jose";
 
-const API_ENDPOINT = "https://coinray.io";
-const WS_ENDPOINT = "wss://ws.coinray.io/v1";
-
-const VERSION = "0.0.1";
+const VERSION = require('../package.json').version;
 
 interface MarketParam {
   coinraySymbol: string
@@ -56,6 +53,10 @@ export class CoinrayError extends Error {
 }
 
 export default class Coinray {
+  config: {
+    apiEndpoint: string;
+    websocketEndpoint: string;
+  };
   private _token: string;
   private _onTokenExpired?: () => void;
   private _tokenCheckInterval: any;
@@ -74,8 +75,12 @@ export default class Coinray {
   private _connected: boolean = false;
   private _publicKey: any;
 
-  constructor(token: string) {
+  constructor(token: string, apiEndpoint = "https://coinray.io", websocketEndpoint = "wss://ws.coinray.io/v1") {
     this._token = token;
+    this.config = {
+      apiEndpoint,
+      websocketEndpoint
+    }
   }
 
   destroy() {
@@ -123,7 +128,7 @@ export default class Coinray {
     }
     this._connected = true;
 
-    this._socket = new Socket(WS_ENDPOINT, {
+    this._socket = new Socket(this.config.websocketEndpoint, {
       transport: this._transport,
       params: {token: this._token, client: "coinrayjs", version: VERSION}
     });
@@ -354,17 +359,18 @@ export default class Coinray {
         ...headers,
         "Cr-Access-Token": `${this._token}`,
         "Cr-Nonce": nonce,
-        "Cr-Signature": signature,
+        "Cr-Signature": signature
       }
     }
 
     const options = {
       method,
-      url: API_ENDPOINT + requestUri,
+      url: this.config.apiEndpoint + requestUri,
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",
         "Authorization": `Bearer ${this._token}`,
+        "Cr-Client-version": VERSION,
         ...headers
       },
       data: JSON.stringify(body)
