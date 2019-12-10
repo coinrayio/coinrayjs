@@ -16,3 +16,4 @@ yarn-error.log*
 
 replace_version_in_dist.js
 lib/
+test.js

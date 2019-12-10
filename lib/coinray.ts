@@ -58,7 +58,7 @@ export default class Coinray {
     websocketEndpoint: string;
   };
   private _token: string;
-  private _onTokenExpired?: () => void;
+  private _onTokenExpired?: () => Promise<void>;
   private _tokenCheckInterval: any;
   private _onError?: (event: any) => void;
   private _onOpen?: (event: any) => void;
@@ -74,6 +74,7 @@ export default class Coinray {
   private _channels: any = {};
   private _connected: boolean = false;
   private _publicKey: any;
+  _refreshingToken: Promise<void>;
 
   constructor(token: string, apiEndpoint = "https://coinray.io", websocketEndpoint = "wss://ws.coinray.io/v1") {
     this._token = token;
@@ -93,10 +94,13 @@ export default class Coinray {
     this.disconnect()
   }
 
-  checkToken() {
+  async checkToken() {
     if (jwtExpired(this._token) && this._onTokenExpired) {
-      this._onTokenExpired();
-      return false
+      if (!this._refreshingToken) {
+        this._refreshingToken = this._onTokenExpired();
+      }
+      await this._refreshingToken;
+      return !jwtExpired(this._token);
     }
     return true;
   }
@@ -105,13 +109,22 @@ export default class Coinray {
     this._transport = transport
   }
 
-  onTokenExpired(callback: () => void) {
+  onTokenExpired(callback: () => Promise<void>) {
     this._onTokenExpired = callback;
     this._tokenCheckInterval = setInterval(this.checkToken, 5 * MINUTES)
   }
 
   refreshToken(token: string) {
     this._token = token
+  }
+
+  async getToken() {
+    const tokenValid = await this.checkToken();
+    if (tokenValid) {
+      return this._token
+    } else {
+      throw new Error("Token is expired. call refreshToken in the onTokenExpired callback")
+    }
   }
 
   disconnect() {
@@ -122,15 +135,16 @@ export default class Coinray {
     this._connected = false
   }
 
-  connect() {
+  async connect() {
     if (this._connected) {
       return
     }
+    const token = await this.getToken();
     this._connected = true;
 
     this._socket = new Socket(this.config.websocketEndpoint, {
       transport: this._transport,
-      params: {token: this._token, client: "coinrayjs", version: VERSION}
+      params: {token: token, client: "coinrayjs", version: VERSION}
     });
 
     // @ts-ignore
@@ -158,14 +172,14 @@ export default class Coinray {
     this._onError = callback
   }
 
-  subscribeTrades({coinraySymbol}: MarketParam, callback: (payload: any) => void) {
+  async subscribeTrades({coinraySymbol}: MarketParam, callback: (payload: any) => void) {
     if (this._tradeListeners[coinraySymbol] && this._tradeListeners[coinraySymbol].length > 0) {
       this._tradeListeners[coinraySymbol].push(callback);
       return callback
     }
     this._tradeListeners[coinraySymbol] = [callback];
 
-    this.connect();
+    await this.connect();
     const channel = this.getChannel("trades");
 
     channel.push("subscribe", {symbols: coinraySymbol}, 5000);
@@ -228,11 +242,10 @@ export default class Coinray {
 
     if (this._candleTradeListeners[coinraySymbol]) {
       this._candleTradeListeners[coinraySymbol][candleId] = candleCallback;
-      this.subscribeTrades({coinraySymbol}, candleCallback);
-      return callback
+    } else {
+      this._candleTradeListeners[coinraySymbol] = {[candleId]: candleCallback};
     }
-    this._candleTradeListeners[coinraySymbol] = {[candleId]: candleCallback};
-    this.subscribeTrades({coinraySymbol}, candleCallback);
+    await this.subscribeTrades({coinraySymbol}, candleCallback);
 
     return callback
   }
@@ -347,6 +360,8 @@ export default class Coinray {
   }
 
   private async _request(endpoint: string, method: Method, {version = "v2", headers = {}, params = {}, body = {}, secret = ""}) {
+    const token = await this.getToken();
+
     const paramString = Object.entries(params).length > 0 ? '?' + Object.entries(params).map(([key, val]) => `${key}=${val}`).join('&') : "";
     const nonce = new Date().getTime();
     const requestUri = `/api/${version}/${endpoint}${paramString}`;
@@ -357,7 +372,7 @@ export default class Coinray {
 
       headers = {
         ...headers,
-        "Cr-Access-Token": `${this._token}`,
+        "Cr-Access-Token": `${token}`,
         "Cr-Nonce": nonce,
         "Cr-Signature": signature
       }
@@ -369,7 +384,7 @@ export default class Coinray {
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${this._token}`,
+        "Authorization": `Bearer ${token}`,
         "Cr-Client-version": VERSION,
         ...headers
       },
