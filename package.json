@@ -8,7 +8,7 @@
     "/dist"
   ],
   "author": "development@coinray.io",
-  "license": "ISC",
+  "license": "MIT",
   "private": false,
   "scripts": {
     "test": "jest --detectOpenHandles",
