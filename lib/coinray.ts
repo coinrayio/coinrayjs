@@ -1,9 +1,10 @@
-import axios, {AxiosRequestConfig} from "axios";
+import axios, {AxiosRequestConfig, Method} from "axios";
 import {Channel, Socket} from "phoenix";
-import {jwtExpired, MINUTES} from "./util";
+import {camelize, createJWT, encryptPayload, jwtExpired, MINUTES, signHMAC} from "./util";
 import _ from "lodash"
+import {JWK} from "node-jose";
 
-const API_ENDPOINT = "https://coinray.io/";
+const API_ENDPOINT = "https://coinray.io";
 const WS_ENDPOINT = "wss://ws.coinray.io/v1";
 
 const VERSION = "0.0.1";
@@ -42,6 +43,18 @@ interface Candle {
   quoteVolume: number,
 }
 
+export class CoinrayError extends Error {
+  errorCode: number;
+  errorMessage: string;
+
+  constructor({code, message}) {
+    super("Request failed");
+    this.name = "CoinrayError";
+    this.errorCode = code;
+    this.errorMessage = message;
+  }
+}
+
 export default class Coinray {
   private _token: string;
   private _onTokenExpired?: () => void;
@@ -59,6 +72,7 @@ export default class Coinray {
 
   private _channels: any = {};
   private _connected: boolean = false;
+  private _publicKey: any;
 
   constructor(token: string) {
     this._token = token;
@@ -169,7 +183,6 @@ export default class Coinray {
     }
 
     if (this._tradeListeners[coinraySymbol].length === 0) {
-      console.log("all done closing trades");
       this.getChannel("trades")
           .push("unsubscribe", {symbols: coinraySymbol}, 5000)
     }
@@ -235,27 +248,60 @@ export default class Coinray {
   }
 
   async fetchCandles({coinraySymbol, resolution, start, end}: CandlesParam): Promise<Candle[]> {
-    const {result} = await this._request("candles", {
-      symbol: coinraySymbol,
-      resolution: resolution,
-      startTime: start,
-      endTime: end
+    const {result} = await this.get("candles", {
+      version: "v1",
+      params: {
+        symbol: coinraySymbol,
+        resolution: resolution,
+        startTime: start,
+        endTime: end
+      }
     });
-
 
     return result.map(Coinray._parseCandle);
   }
 
   async fetchLastCandle({coinraySymbol, resolution}: CandleParam): Promise<Candle | undefined> {
-    const {result} = await this._request("candles/latest", {
-      symbol: coinraySymbol,
-      resolution: resolution,
+    const {result} = await this.get("candles/latest", {
+      version: "v1",
+      params: {
+        symbol: coinraySymbol,
+        resolution: resolution,
+      }
     });
 
     if (result.length > 0) {
       return Coinray._parseCandle(result[0])
     }
   }
+
+  async createCredential(deviceId: string, password: string) {
+    const publicKey = await this.publicKey();
+
+    try {
+      const encryptedPassword = await encryptPayload(await createJWT({password}), publicKey);
+
+      const {result} = await this.post("credentials", {
+        secret: password,
+        body: {
+          deviceId, encryptedPassword
+        }
+      });
+
+      return result
+    } catch (error) {
+      throw error
+    }
+  }
+
+  async publicKey() {
+    if (!this._publicKey) {
+      const {result: {jwk}} = await this.get("credentials/certificate");
+      this._publicKey = await JWK.asKey(jwk)
+    }
+    return this._publicKey
+  }
+
 
   private get socket(): Socket {
     if (!this._socket) {
@@ -279,17 +325,49 @@ export default class Coinray {
     return channel
   }
 
-  private async _request(endpoint: string, params: any) {
-    const paramString = Object.entries(params).map(([key, val]) => `${key}=${val}`).join('&');
+  async get(endpoint: string, {version = "v2", headers = {}, params = {}} = {}) {
+    return await this._request(endpoint, "GET", {version, headers, params})
+  }
+
+  async post(endpoint: string, attributes) {
+    return await this._request(endpoint, "POST", attributes)
+  }
+
+  async patch(endpoint: string, attributes) {
+    return await this._request(endpoint, "PATCH", attributes)
+  }
+
+  async delete(endpoint: string, attributes) {
+    return await this._request(endpoint, "delete", attributes)
+  }
+
+  private async _request(endpoint: string, method: Method, {version = "v2", headers = {}, params = {}, body = {}, secret = ""}) {
+    const paramString = Object.entries(params).length > 0 ? '?' + Object.entries(params).map(([key, val]) => `${key}=${val}`).join('&') : "";
+    const nonce = new Date().getTime();
+    const requestUri = `/api/${version}/${endpoint}${paramString}`;
+
+    if (version === "v2") {
+      const dataToSign = [nonce, method.toUpperCase(), requestUri, JSON.stringify(body)].join("");
+      const signature = signHMAC(dataToSign, secret);
+
+      headers = {
+        ...headers,
+        "Cr-Access-Token": `${this._token}`,
+        "Cr-Nonce": nonce,
+        "Cr-Signature": signature,
+      }
+    }
 
     const options = {
-      method: "GET",
-      url: API_ENDPOINT + `/api/v1/${endpoint}?${paramString}`,
+      method,
+      url: API_ENDPOINT + requestUri,
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${this._token}`
+        "Authorization": `Bearer ${this._token}`,
+        ...headers
       },
+      data: JSON.stringify(body)
     } as AxiosRequestConfig;
 
     try {
@@ -299,10 +377,13 @@ export default class Coinray {
         result = response.data
       } else if (response.status === 204) {
         result = {}
+      } else {
+        result = response.data
       }
-      return {result, _headers: response.headers}
-    } catch ({response}) {
-      throw new Error(response)
+      return {result: camelize(result), _headers: response.headers}
+    } catch ({response, request}) {
+      const {error} = response.data;
+      throw new CoinrayError(error)
     }
   }
 
