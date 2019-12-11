@@ -181,16 +181,24 @@ export default class Coinray {
 
     await this.connect();
     const channel = this.getChannel("trades");
-
-    channel.push("subscribe", {symbols: coinraySymbol}, 5000);
-    channel.on("update", ({symbol, trades}) => {
+    channel.on("update", ({ symbol, trades }) => {
       const callbacks = Object.values(this._tradeListeners[symbol]) as [];
       callbacks.map((callback: (payload: any) => void) => callback({
         coinraySymbol: symbol,
+        type: "update",
         trades: trades.map(Coinray._parseTrade)
       }))
     });
-
+    channel.on("snapshot", ({ symbol, trades }) => {
+      const callbacks = Object.values(this._tradeListeners[symbol]) as [];
+      callbacks.map((callback: (payload: any) => void) => callback({
+        coinraySymbol: symbol,
+        type: "snapshot",
+        trades: trades.map(Coinray._parseTrade)
+      }))
+    });
+    channel.on("error", (payload) => console.error(payload));
+    channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
     return callback
   }
 
