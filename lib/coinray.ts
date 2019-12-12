@@ -188,20 +188,22 @@ export default class Coinray {
 
     await this.connect();
     const channel = this.getChannel("trades");
-    channel.on("update", ({ symbol, trades }) => {
+    channel.on("update", ({symbol, trades}) => {
       const callbacks = Object.values(this._tradeListeners[symbol]) as [];
+      const parsedTrades = trades.map(Coinray._parseTrade);
       callbacks.map((callback: (payload: any) => void) => callback({
         coinraySymbol: symbol,
         type: "update",
-        trades: trades.map(Coinray._parseTrade)
+        trades: parsedTrades
       }))
     });
-    channel.on("snapshot", ({ symbol, trades }) => {
+    channel.on("snapshot", ({symbol, trades}) => {
       const callbacks = Object.values(this._tradeListeners[symbol]) as [];
+      const parsedTrades = trades.map(Coinray._parseTrade);
       callbacks.map((callback: (payload: any) => void) => callback({
         coinraySymbol: symbol,
         type: "snapshot",
-        trades: trades.map(Coinray._parseTrade)
+        trades: parsedTrades
       }))
     });
     channel.on("error", (payload) => console.error(payload));
@@ -231,25 +233,27 @@ export default class Coinray {
 
     await this.connect();
     const channel = this.getChannel("orderbooks");
-    channel.on("update", ({ orderbooks }) => {
+    channel.on("update", ({orderbooks}) => {
       const incoming_symbols = Object.keys(orderbooks);
       incoming_symbols.forEach(symbol => {
         const callbacks = Object.values(this._orderbookListeners[symbol]) as [];
+        const parsedOrderbook = Coinray._parseOrderbook(orderbooks[symbol]);
         callbacks.map((callback: (payload: any) => void) => callback({
           coinraySymbol: symbol,
           type: "update",
-          orderbook: Coinray._parseOrderbook(orderbooks[symbol])
+          orderbook: parsedOrderbook
         }))
       })
     });
-    channel.on("snapshot", ({ orderbooks }) => {
+    channel.on("snapshot", ({orderbooks}) => {
       const incoming_symbols = Object.keys(orderbooks);
       incoming_symbols.forEach(symbol => {
         const callbacks = Object.values(this._orderbookListeners[symbol]) as [];
+        const parsedOrderbook = Coinray._parseOrderbook(orderbooks[symbol]);
         callbacks.map((callback: (payload: any) => void) => callback({
           coinraySymbol: symbol,
           type: "snapshot",
-          orderbook: Coinray._parseOrderbook(orderbooks[symbol])
+          orderbook: parsedOrderbook
         }))
       })
     });
@@ -267,7 +271,7 @@ export default class Coinray {
 
     if (this._orderbookListeners[coinraySymbol].length === 0) {
       this.getChannel("orderbooks")
-        .push("unsubscribe", {symbols: coinraySymbol}, 5000)
+          .push("unsubscribe", {symbols: coinraySymbol}, 5000)
     }
   }
 
