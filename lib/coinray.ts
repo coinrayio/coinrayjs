@@ -22,6 +22,12 @@ interface CandlesParam {
   end?: number
 }
 
+interface Orderbook {
+  seq: number,
+  asks: [number, number],
+  bids: [number, number],
+}
+
 interface Trade {
   id: string,
   time: Date,
@@ -66,6 +72,7 @@ export default class Coinray {
   private _transport: any;
 
   private _tradeListeners: any = {};
+  private _orderbookListeners: any = {};
 
   private _candleTradeListeners: any = {};
   private _candleListeners: any = {};
@@ -215,12 +222,53 @@ export default class Coinray {
     }
   }
 
-  subscribeOrderBook({coinraySymbol}: MarketParam, callback: () => void) {
+  async subscribeOrderBook({coinraySymbol}: MarketParam, callback: (payload: any) => void) {
+    if (this._orderbookListeners[coinraySymbol] && this._orderbookListeners[coinraySymbol].length > 0) {
+      this._orderbookListeners[coinraySymbol].push(callback);
+      return callback
+    }
+    this._orderbookListeners[coinraySymbol] = [callback];
 
+    await this.connect();
+    const channel = this.getChannel("orderbooks");
+    channel.on("update", ({ orderbooks }) => {
+      const incoming_symbols = Object.keys(orderbooks);
+      incoming_symbols.forEach(symbol => {
+        const callbacks = Object.values(this._orderbookListeners[symbol]) as [];
+        callbacks.map((callback: (payload: any) => void) => callback({
+          coinraySymbol: symbol,
+          type: "update",
+          orderbook: Coinray._parseOrderbook(orderbooks[symbol])
+        }))
+      })
+    });
+    channel.on("snapshot", ({ orderbooks }) => {
+      const incoming_symbols = Object.keys(orderbooks);
+      incoming_symbols.forEach(symbol => {
+        const callbacks = Object.values(this._orderbookListeners[symbol]) as [];
+        callbacks.map((callback: (payload: any) => void) => callback({
+          coinraySymbol: symbol,
+          type: "snapshot",
+          orderbook: Coinray._parseOrderbook(orderbooks[symbol])
+        }))
+      })
+    });
+    channel.on("error", (payload) => console.error(payload));
+    channel.push("subscribe", {symbols: coinraySymbol}, 10000);
+    return callback
   }
 
-  unsubscribeOrderBook(handle: string) {
+  unsubscribeOrderBook({coinraySymbol}: MarketParam, callback?: (payload: any) => void) {
+    if (callback) {
+      this._orderbookListeners[coinraySymbol] = this._orderbookListeners[coinraySymbol].filter((c: (payload: any) => void) => c !== callback)
+    } else {
+      this._orderbookListeners[coinraySymbol] = []
+    }
 
+    if (this._orderbookListeners[coinraySymbol].length === 0) {
+      this.getChannel("orderbooks")
+        .push("unsubscribe", {symbols: coinraySymbol}, 5000)
+    }
   }
 
   async subscribeCandles({coinraySymbol, resolution}: CandleParam, callback: (payload: any) => void) {
@@ -413,6 +461,18 @@ export default class Coinray {
     } catch ({response, request}) {
       const {error} = response.data;
       throw new CoinrayError(error)
+    }
+  }
+
+  private static _parseOrderbookEntry([price, quantity]: any): [number, number] {
+    return [parseFloat(price), parseFloat(quantity)];
+  }
+
+  private static _parseOrderbook({asks, bids, seq}: any): Orderbook {
+    return {
+      seq,
+      asks: asks.map(Coinray._parseOrderbookEntry),
+      bids: bids.map(Coinray._parseOrderbookEntry),
     }
   }
 
