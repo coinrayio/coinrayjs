@@ -64,6 +64,8 @@ export default class Coinray {
     websocketEndpoint: string;
   };
   private _token: string;
+  private _sessionKey: string;
+  private _credential: string;
   private _onTokenExpired?: () => Promise<void>;
   private _tokenCheckInterval: any;
   private _onError?: (event: any) => void;
@@ -89,6 +91,11 @@ export default class Coinray {
       apiEndpoint,
       websocketEndpoint
     }
+  }
+
+  authenticateDevice(credential: string, sessionKey: string) {
+    this._credential = credential;
+    this._sessionKey = sessionKey;
   }
 
   destroy() {
@@ -363,6 +370,26 @@ export default class Coinray {
         secret: password,
         body: {
           deviceId, encryptedPassword
+        }
+      });
+
+      return result
+    } catch (error) {
+      throw error
+    }
+  }
+
+  async wrapApiKey(apiKeySettings: {}) {
+    const publicKey = await this.publicKey();
+
+    try {
+      const apiKey = JSON.stringify(apiKeySettings);
+      const encryptedApiKey = await encryptPayload(await createJWT({apiKey}), publicKey);
+
+      const {result} = await this.post("credentials/wrap_api_key", {
+        secret: this._sessionKey,
+        body: {
+          encryptedApiKey, credential: this._credential
         }
       });
 
