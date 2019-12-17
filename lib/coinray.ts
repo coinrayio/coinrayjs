@@ -2,49 +2,20 @@ import axios, {AxiosRequestConfig, Method} from "axios";
 import {Channel, Socket} from "phoenix";
 import {camelize, createJWT, encryptPayload, jwtExpired, MINUTES, signHMAC} from "./util";
 import _ from "lodash"
+
 import {JWK} from "node-jose";
+import {
+  CancelOrderParams,
+  Candle,
+  CandleParam,
+  CandlesParam,
+  CreateOrderParams,
+  MarketParam, Orderbook, Trade,
+  UpdateOrderParams
+} from "./types";
 
 const VERSION = require('../package.json').version;
 
-interface MarketParam {
-  coinraySymbol: string
-}
-
-interface CandleParam {
-  coinraySymbol: string,
-  resolution: string
-}
-
-interface CandlesParam {
-  coinraySymbol: string,
-  resolution: string,
-  start?: number,
-  end?: number
-}
-
-interface Orderbook {
-  seq: number,
-  asks: [number, number],
-  bids: [number, number],
-}
-
-interface Trade {
-  id: string,
-  time: Date,
-  price: number,
-  quantity: number,
-  type: "sell" | "buy"
-}
-
-interface Candle {
-  time: number,
-  open: number,
-  high: number,
-  low: number,
-  close: number,
-  baseVolume: number,
-  quoteVolume: number,
-}
 
 export class CoinrayError extends Error {
   errorCode: number;
@@ -397,6 +368,18 @@ export default class Coinray {
     } catch (error) {
       throw error
     }
+  }
+
+  async createOrder(order: CreateOrderParams) {
+    return await this.post("order", order)
+  }
+
+  async updateOrder(order: UpdateOrderParams) {
+    return await this.post("order", order)
+  }
+
+  async cancelOrder(cancelOrder: CancelOrderParams) {
+    return await this.delete("order", cancelOrder)
   }
 
   async publicKey() {
