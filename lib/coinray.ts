@@ -371,15 +371,39 @@ export default class Coinray {
   }
 
   async createOrder(order: CreateOrderParams) {
-    return await this.post("order", order)
+    try {
+      const {result} = await this.post("order", {
+        secret: this._sessionKey,
+        body: {...order, credential: this._credential}
+      });
+      return result
+    } catch (error) {
+      throw error
+    }
   }
 
   async updateOrder(order: UpdateOrderParams) {
-    return await this.post("order", order)
+    try {
+      const {result} = await this.patch("order", {
+        secret: this._sessionKey,
+        body: {...order, credential: this._credential}
+      });
+      return result
+    } catch (error) {
+      throw error
+    }
   }
 
-  async cancelOrder(cancelOrder: CancelOrderParams) {
-    return await this.delete("order", cancelOrder)
+  async cancelOrder(order: CancelOrderParams) {
+    try {
+      const {result} = await this.delete("order", {
+        secret: this._sessionKey,
+        body: {...order, credential: this._credential}
+      });
+      return result
+    } catch (error) {
+      throw error
+    }
   }
 
   async publicKey() {

@@ -49,8 +49,8 @@ export enum OrderType {
 export enum OrderSide {BUY = "buy", SELL = "sell"}
 
 export interface BaseParams {
-  encryptedApiKey: object,
-  coinraySymbol?: string,
+  encryptedApiKey: string,
+  coinraySymbol: string,
 }
 
 export interface CreateOrderParams extends BaseParams {
