@@ -1,11 +1,10 @@
-import {JWS, JWE, JWK, util} from "node-jose";
-import {hmac} from "node-forge";
-import {camelCase} from "lodash"
+import { hmac } from "node-forge";
+import { camelCase } from "lodash"
+import { Jose } from "jose-jwe-jws";
 
 export const MINUTES = 60;
 export const HOURS = 60 * MINUTES;
 export const DAYS = 24 * HOURS;
-
 
 export function unix() {
   return new Date().getTime() / 1000
@@ -19,13 +18,17 @@ export function signHMAC(dataToSign, secret) {
 }
 
 export async function createJWT(payload: {}) {
-  const header = util.base64url.encode(JSON.stringify({typ: "JWT", alg: "none"}));
-  const body = util.base64url.encode(JSON.stringify(payload));
-  return [header, body, ""].join(".")
+  const header = JSON.stringify({ typ: "JWT", alg: "none" });
+  const body = JSON.stringify(payload);
+  const jwt = [header, body, ""].join(".");
+  const jwt_b64 = btoa(unescape(encodeURIComponent(jwt)));
+  return jwt_b64;
 }
 
-export async function encryptPayload(payload, jwk) {
-  return JWE.createEncrypt({compact: true}, {key: jwk}).final(payload, "utf8");
+export async function encryptPayload(payload, public_rsa_key) {
+  var cryptographer = new Jose.WebCryptographer();
+  var encrypter = new Jose.JoseJWE.Encrypter(cryptographer, public_rsa_key);
+  return await encrypter.encrypt(payload);
 }
 
 export function camelize(value) {
