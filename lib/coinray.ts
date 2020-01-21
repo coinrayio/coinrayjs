@@ -1,6 +1,6 @@
 import axios, {AxiosRequestConfig, Method} from "axios";
 import {Channel, Socket} from "phoenix";
-import {camelize, createJWT, encryptPayload, jwtExpired, MINUTES, signHMAC} from "./util";
+import {camelize, createJWT, encryptPayload, jwtExpired, MINUTES, safeBigNumber, safeTime, signHMAC} from "./util";
 import _ from "lodash"
 
 import {JWK} from "node-jose";
@@ -10,12 +10,15 @@ import {
   CandleParam,
   CandlesParam,
   CreateOrderParams,
-  MarketParam, Orderbook, Trade,
-  UpdateOrderParams
+  MarketParam, OrderBook,
+  UpdateOrderParams,
+  Trade, TradeList, OrderBookEntry,
 } from "./types";
+import Market from "./market";
+import Exchange from "./exchange";
+import BigNumber from "bignumber.js";
 
 const VERSION = require('../package.json').version;
-
 
 export class CoinrayError extends Error {
   errorCode: number;
@@ -215,11 +218,11 @@ export default class Coinray {
       const incoming_symbols = Object.keys(orderbooks);
       incoming_symbols.forEach(symbol => {
         const callbacks = Object.values(this._orderbookListeners[symbol]) as [];
-        const parsedOrderbook = Coinray._parseOrderbook(orderbooks[symbol]);
+        const parsedOrderBook = Coinray._parseOrderBook(orderbooks[symbol]);
         callbacks.map((callback: (payload: any) => void) => callback({
           coinraySymbol: symbol,
           type: "update",
-          orderbook: parsedOrderbook
+          orderbook: parsedOrderBook
         }))
       })
     });
@@ -227,11 +230,11 @@ export default class Coinray {
       const incoming_symbols = Object.keys(orderbooks);
       incoming_symbols.forEach(symbol => {
         const callbacks = Object.values(this._orderbookListeners[symbol]) as [];
-        const parsedOrderbook = Coinray._parseOrderbook(orderbooks[symbol]);
+        const parsedOrderBook = Coinray._parseOrderBook(orderbooks[symbol]);
         callbacks.map((callback: (payload: any) => void) => callback({
           coinraySymbol: symbol,
           type: "snapshot",
-          orderbook: parsedOrderbook
+          orderbook: parsedOrderBook
         }))
       })
     });
@@ -309,8 +312,8 @@ export default class Coinray {
       params: {
         symbol: coinraySymbol,
         resolution: resolution,
-        startTime: start,
-        endTime: end
+        start_time: start,
+        end_time: end
       }
     });
 
@@ -329,6 +332,44 @@ export default class Coinray {
     if (result.length > 0) {
       return Coinray._parseCandle(result[0])
     }
+  }
+
+  async fetchExchanges(): Promise<Array<Exchange>> {
+    const {result: {exchanges}} = await this.get("exchanges", {
+      version: "v1",
+    });
+    return exchanges.map((exhange) => Exchange.Create(exhange, this))
+  }
+
+  async fetchMarkets(exchange): Promise<Array<Market>> {
+    const {result: {markets}} = await this.get("markets", {
+      version: "v1",
+      params: {
+        exchange
+      }
+    });
+    return markets.map((market) => Market.Create(market, this))
+  }
+
+  async fetchTrades(coinraySymbol): Promise<Trade[]> {
+    const {result: trades} = await this.get("trades", {
+      version: "v1",
+      params: {
+        symbol: coinraySymbol
+      }
+    });
+    return trades.map(Coinray._parseTrade)
+  }
+
+  async fetchOrderBook(coinraySymbol): Promise<OrderBook> {
+    const {result: {seq, asks, bids}} = await this.get("order_book", {
+      version: "v1",
+      params: {
+        symbol: coinraySymbol
+      }
+    });
+
+    return Coinray._parseOrderBook({seq, asks, bids})
   }
 
   async createCredential(deviceId: string, password: string) {
@@ -502,15 +543,15 @@ export default class Coinray {
     }
   }
 
-  private static _parseOrderbookEntry([price, quantity]: any): [number, number] {
-    return [parseFloat(price), parseFloat(quantity)];
+  private static _parseOrderBookEntry([price, quantity]: any): OrderBookEntry {
+    return {price: safeBigNumber(price), quantity: safeBigNumber(quantity)};
   }
 
-  private static _parseOrderbook({asks, bids, seq}: any): Orderbook {
+  private static _parseOrderBook({asks, bids, seq}: any): OrderBook {
     return {
       seq,
-      asks: asks.map(Coinray._parseOrderbookEntry),
-      bids: bids.map(Coinray._parseOrderbookEntry),
+      asks: asks.map(Coinray._parseOrderBookEntry) as OrderBookEntry[],
+      bids: bids.map(Coinray._parseOrderBookEntry) as OrderBookEntry[],
     }
   }
 
@@ -519,12 +560,12 @@ export default class Coinray {
       const [time, open, high, low, close, baseVolume, quoteVolume]: any = result;
       return {
         time,
-        open: parseFloat(open),
-        high: parseFloat(high),
-        low: parseFloat(low),
-        close: parseFloat(close),
-        baseVolume: parseFloat(baseVolume),
-        quoteVolume: parseFloat(quoteVolume),
+        open: safeBigNumber(open),
+        high: safeBigNumber(high),
+        low: safeBigNumber(low),
+        close: safeBigNumber(close),
+        baseVolume: safeBigNumber(baseVolume),
+        quoteVolume: safeBigNumber(quoteVolume),
       }
     } else {
       throw new Error("Candle")
@@ -534,9 +575,9 @@ export default class Coinray {
   private static _parseTrade([id, time, price, quantity, isBuy]: any): Trade {
     return {
       id,
-      time: new Date(time),
-      price: parseFloat(price),
-      quantity: parseFloat(quantity),
+      time: safeTime(time),
+      price: safeBigNumber(price),
+      quantity: safeBigNumber(quantity),
       type: isBuy === 1 ? "buy" : "sell"
     }
   }
@@ -552,22 +593,22 @@ export default class Coinray {
     const candles: Candle[] = [];
     _.forEach(groupedTrades, (trades, time) => {
       let first = trades[0];
-      let open, low: number, high: number, close;
-      let baseVolume = 0;
-      let quoteVolume = 0;
+      let open, low, high, close;
+      let baseVolume = new BigNumber(0);
+      let quoteVolume = new BigNumber(0);
 
       open = low = high = close = first.price;
 
       trades.map(({price, quantity}: Trade) => {
-        low = Math.min(low, price);
-        high = Math.max(high, price);
+        low = BigNumber.min(low, price);
+        high = BigNumber.max(high, price);
         close = price;
-        baseVolume += quantity;
-        quoteVolume += quantity * price;
+        baseVolume = baseVolume.plus(quantity);
+        quoteVolume = quoteVolume.plus(quantity.multipliedBy(price));
       });
 
       candles.push({
-        time: parseInt(time),
+        time: safeTime(time),
         open,
         high,
         low,
@@ -584,11 +625,11 @@ export default class Coinray {
       return candle
     }
 
-    currentCandle.high = Math.max(currentCandle.high, candle.high);
-    currentCandle.low = Math.min(currentCandle.low, candle.low);
+    currentCandle.high = BigNumber.max(currentCandle.high, candle.high);
+    currentCandle.low = BigNumber.min(currentCandle.low, candle.low);
     currentCandle.close = candle.close;
-    currentCandle.baseVolume += candle.baseVolume;
-    currentCandle.quoteVolume += candle.quoteVolume;
+    currentCandle.baseVolume = currentCandle.baseVolume.plus(candle.baseVolume);
+    currentCandle.quoteVolume = currentCandle.quoteVolume.plus(candle.quoteVolume);
 
     return currentCandle
   }

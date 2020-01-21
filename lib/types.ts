@@ -4,6 +4,16 @@ export interface MarketParam {
   coinraySymbol: string
 }
 
+export interface Candle {
+  time: Date,
+  open: BigNumber,
+  high: BigNumber,
+  low: BigNumber,
+  close: BigNumber,
+  baseVolume: BigNumber,
+  quoteVolume: BigNumber,
+}
+
 export interface CandleParam {
   coinraySymbol: string,
   resolution: string
@@ -16,28 +26,28 @@ export interface CandlesParam {
   end?: number
 }
 
-export interface Orderbook {
+export interface OrderBookEntry {
+  price: BigNumber,
+  quantity: BigNumber
+}
+
+export interface OrderBook {
   seq: number,
-  asks: [number, number],
-  bids: [number, number],
+  asks: OrderBookEntry[],
+  bids: OrderBookEntry[],
 }
 
 export interface Trade {
   id: string,
   time: Date,
-  price: number,
-  quantity: number,
+  price: BigNumber,
+  quantity: BigNumber,
   type: "sell" | "buy"
 }
 
-export interface Candle {
-  time: number,
-  open: number,
-  high: number,
-  low: number,
-  close: number,
-  baseVolume: number,
-  quoteVolume: number,
+export interface TradeList {
+  coinraySymbol: string,
+  trades: Trade[]
 }
 
 export enum OrderType {
