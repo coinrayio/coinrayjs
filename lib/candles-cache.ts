@@ -45,7 +45,12 @@ export default class CandlesCache {
 
   async load(coinraySymbol: string, start: number, end: number, resolution: string) {
     const key = [coinraySymbol, resolution].join("-");
-    let range = this.lru.read(key) || new Range();
+    let range = this.lru.read(key);
+
+    if (!range) {
+      range = new Range();
+      this.lru.write(key, range)
+    }
 
     if (range.excludes(start, end)) {
       const candles = await this.api.fetchCandles({coinraySymbol, start, end, resolution});

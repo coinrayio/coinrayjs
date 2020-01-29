@@ -2,6 +2,8 @@ import {JWS, JWE, JWK, util} from "node-jose";
 import {hmac} from "node-forge";
 import {camelCase} from "lodash"
 import BigNumber from "bignumber.js";
+import {MarketMap} from "./types";
+import _ from "lodash";
 
 export const MINUTES = 60;
 export const HOURS = 60 * MINUTES;
@@ -152,4 +154,17 @@ export function safeTime(d: string | number): Date {
     time = time * 1000
   }
   return new Date(time)
+}
+
+export function filterMarket(markets: MarketMap, query) {
+  if (!query || query.length === 0) {
+    return markets
+  }
+
+  const keywords = query.toLowerCase().split(/[-_:\/\s]+/).filter((keyword) => keyword.length > 0);
+
+  return _.pickBy(markets, (market, key) => {
+    const coinraySymbol = key.toLowerCase();
+    return keywords.filter((keyword) => coinraySymbol.includes(keyword)).length === keywords.length
+  })
 }

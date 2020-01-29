@@ -11,11 +11,8 @@ import {
 } from "./util";
 import BigNumber from "bignumber.js";
 import Coinray from "./coinray";
-import Market from "./market";
+import {MarketMap} from "./types";
 
-interface MarketMap {
-  [key: string]: Market;
-}
 
 export default class Exchange {
   public readonly api: Coinray;
@@ -81,6 +78,22 @@ export default class Exchange {
     this.quoteCurrencies = d.quoteCurrencies;
     this.supportedResolutions = d.supportedResolutions;
     this.markets = {}
+  }
+
+  clone() {
+    return new Exchange({
+      api: this.api,
+      id: this.id,
+      name: this.name,
+      code: this.code,
+      websocket: this.websocket,
+      logo: this.logo,
+      btcVolume: this.btcVolume,
+      usdVolume: this.usdVolume,
+      totalMarkets: this.totalMarkets,
+      quoteCurrencies: this.quoteCurrencies,
+      supportedResolutions: this.supportedResolutions,
+    }, this.api)
   }
 
   async loadMarkets() {

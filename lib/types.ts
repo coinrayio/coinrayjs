@@ -1,4 +1,5 @@
 import BigNumber from "bignumber.js";
+import Market from "./market";
 
 export interface MarketParam {
   coinraySymbol: string
@@ -24,6 +25,10 @@ export interface CandlesParam {
   resolution: string,
   start?: number,
   end?: number
+}
+
+export interface MarketMap {
+  [key: string]: Market;
 }
 
 export interface OrderBookEntry {

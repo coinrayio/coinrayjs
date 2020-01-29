@@ -1,15 +1,16 @@
 import CoinrayCache from "./coinray-cache";
 import {OrderBook, Trade} from "./types";
+import EventEmitter from "./event-emitter";
 
 let currentMarket;
 
-export default class CurrentMarket {
+export default class CurrentMarket extends EventEmitter {
   private coinrayCache: CoinrayCache;
   public coinraySymbol: string;
-  private listeners: {};
   public refreshRate: number;
   private loadingOrderBook: boolean;
   private loadingTrades: boolean;
+  private timeouts: {};
 
   static instance(coinrayCache) {
     if (currentMarket) {
@@ -20,8 +21,10 @@ export default class CurrentMarket {
   }
 
   constructor(coinrayCache: CoinrayCache) {
+    super();
     this.coinrayCache = coinrayCache;
     this.refreshRate = 15 * 1000;
+    this.timeouts = {};
     this.clear();
   }
 
@@ -38,11 +41,15 @@ export default class CurrentMarket {
 
   clear() {
     this.coinraySymbol = null;
-    this.listeners = {};
+    this.removeAllListeners()
   }
 
   getMarket() {
-    return this.coinrayCache.getMarket(this.coinraySymbol)
+    if (this.coinraySymbol) {
+      return this.coinrayCache.getMarket(this.coinraySymbol)
+    } else {
+      throw "CoinraySymbol not loaded"
+    }
   }
 
   async getTrades(): Promise<{ coinraySymbol: string, trades: Trade[] }> {
@@ -62,7 +69,7 @@ export default class CurrentMarket {
   }
 
   subscribeCoinraySymbolWillChange(callback) {
-    this.on('coinraySymbolWillChange', callback)
+    return this.on('coinraySymbolWillChange', callback)
   }
 
   unsubscribeCoinraySymbolWillChange(callback) {
@@ -70,7 +77,7 @@ export default class CurrentMarket {
   }
 
   subscribeCoinraySymbolChange(callback) {
-    this.on('coinraySymbolChanged', callback)
+    return this.on('coinraySymbolChanged', callback)
   }
 
   unsubscribeCoinraySymbolChange(callback) {
@@ -80,18 +87,21 @@ export default class CurrentMarket {
   subscribeMarketUpdates = (callback) => {
     this.on("marketUpdated", callback);
     this.broadCastMarketUpdate()
+    return callback;
   };
 
   broadCastMarketUpdate = ({lastPrice, bidPrice, askPrice}: any = {}) => {
+    if (!this.coinraySymbol) {
+      return
+    }
     const callbacks = this.listeners['marketUpdated'];
     if (callbacks && callbacks.length > 0) {
+      this.setTimeout('broadCastMarketUpdate', this.refreshRate, this.broadCastMarketUpdate);
       const market = this.getMarket();
       market.updateTicker({lastPrice, bidPrice, askPrice});
       callbacks.forEach((callback) => {
         callback(market)
       });
-
-      setTimeout(this.broadCastMarketUpdate, this.refreshRate)
     }
   };
 
@@ -101,11 +111,12 @@ export default class CurrentMarket {
 
   subscribeOrderBook = (callback) => {
     this.on('orderBookUpdated', callback);
-    this.broadCastOrderBook()
+    this.broadCastOrderBook();
+    return callback;
   };
 
   broadCastOrderBook = async () => {
-    if (this.loadingOrderBook) {
+    if (this.loadingOrderBook || !this.coinraySymbol) {
       return
     }
 
@@ -113,13 +124,13 @@ export default class CurrentMarket {
     if (callbacks && callbacks.length > 0) {
       try {
         this.loadingOrderBook = true;
+        this.setTimeout('broadCastOrderBook', this.refreshRate, this.broadCastOrderBook);
         const orderBook = await this.getOrderBook();
 
         if (orderBook) {
           callbacks.forEach((callback) => {
             callback(orderBook)
           });
-          setTimeout(this.broadCastOrderBook, this.refreshRate)
         }
 
         const lastAsk = orderBook.orderBook.asks[0];
@@ -131,6 +142,7 @@ export default class CurrentMarket {
           });
         }
       } finally {
+        this.setTimeout('broadCastOrderBook', this.refreshRate, this.broadCastOrderBook);
         this.loadingOrderBook = false
       }
     }
@@ -142,11 +154,12 @@ export default class CurrentMarket {
 
   subscribeTrades = (callback) => {
     this.on('tradesUpdated', callback);
-    this.broadCastTrades()
+    this.broadCastTrades();
+    return callback;
   };
 
   broadCastTrades = async () => {
-    if (this.loadingTrades) {
+    if (this.loadingTrades || !this.coinraySymbol) {
       return
     }
 
@@ -154,6 +167,7 @@ export default class CurrentMarket {
     if (callbacks && callbacks.length > 0) {
       try {
         this.loadingTrades = true;
+        this.setTimeout('broadCastTrades', this.refreshRate, this.broadCastTrades);
         const trades = await this.getTrades();
         if (trades) {
           callbacks.forEach((callback) => {
@@ -165,10 +179,10 @@ export default class CurrentMarket {
               lastPrice: lastTrade.price,
             });
           }
-          setTimeout(this.broadCastTrades, this.refreshRate)
         }
       } finally {
         this.loadingTrades = false;
+        this.setTimeout('broadCastTrades', this.refreshRate, this.broadCastTrades);
       }
     }
   };
@@ -177,29 +191,14 @@ export default class CurrentMarket {
     this.off('tradesUpdated', callback)
   };
 
-  on = (type, callback) => {
-    if (!(type in this.listeners)) {
-      this.listeners[type] = []
-    }
-    this.listeners[type].push(callback);
-    return callback
-  };
+  setTimeout(type, time, callback) {
+    this.clearTimeout(type);
+    this.timeouts[type] = setTimeout(callback, time)
+  }
 
-  off = (type, callback) => {
-    if (!(type in this.listeners)) {
-      return;
-    }
-    if (callback) {
-      this.listeners[type] = this.listeners[type].filter((c) => c !== callback)
-    } else {
-      this.listeners[type] = []
-    }
-  };
-
-  dispatchEvent = (type, data) => {
-    const callbacks = this.listeners[type];
-    if (callbacks && callbacks.length > 0) {
-      callbacks.map((callback) => callback(data))
+  clearTimeout(type) {
+    if (this.timeouts[type]) {
+      clearTimeout(this.timeouts[type])
     }
   }
 }

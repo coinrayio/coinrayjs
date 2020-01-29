@@ -559,7 +559,7 @@ export default class Coinray {
     if (result) {
       const [time, open, high, low, close, baseVolume, quoteVolume]: any = result;
       return {
-        time,
+        time: safeTime(time),
         open: safeBigNumber(open),
         high: safeBigNumber(high),
         low: safeBigNumber(low),
@@ -578,7 +578,7 @@ export default class Coinray {
       time: safeTime(time),
       price: safeBigNumber(price),
       quantity: safeBigNumber(quantity),
-      type: isBuy === 1 ? "buy" : "sell"
+      type: ['1', 'buy'].includes(isBuy.toString()) ? "buy" : "sell"
     }
   }
 
