@@ -95,7 +95,7 @@ export default class Market {
     return new Market(d, api);
   }
 
-  private constructor(d: any, api: Coinray) {
+  constructor(d: any, api: Coinray) {
     this.api = api;
     this.id = d.id;
     this.coinraySymbol = d.coinraySymbol;
@@ -130,7 +130,7 @@ export default class Market {
     this.updatedAt = d.updatedAt;
   }
 
-  updateTicker = ({lastPrice, bidPrice, askPrice}) => {
+  updateTicker = ({lastPrice, bidPrice, askPrice} : any) => {
     if (lastPrice) {
       this.lastPrice = lastPrice
     }

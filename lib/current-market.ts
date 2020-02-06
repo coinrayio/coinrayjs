@@ -1,47 +1,51 @@
 import CoinrayCache from "./coinray-cache";
 import {OrderBook, Trade} from "./types";
 import EventEmitter from "./event-emitter";
-
-let currentMarket;
+import Coinray from "./coinray";
+import _ from "lodash";
 
 export default class CurrentMarket extends EventEmitter {
   private coinrayCache: CoinrayCache;
   public coinraySymbol: string;
-  public refreshRate: number;
-  private loadingOrderBook: boolean;
-  private loadingTrades: boolean;
   private timeouts: {};
+  private api: Coinray;
+  private orderBook: { asks: {}; bids: {} };
+  private trades: any[];
 
-  static instance(coinrayCache) {
-    if (currentMarket) {
-      return currentMarket
-    } else {
-      currentMarket = new CurrentMarket(coinrayCache)
-    }
-  }
-
-  constructor(coinrayCache: CoinrayCache) {
+  constructor(api: Coinray, coinrayCache: CoinrayCache) {
     super();
+    this.api = api;
     this.coinrayCache = coinrayCache;
-    this.refreshRate = 15 * 1000;
     this.timeouts = {};
     this.clear();
   }
 
   setCoinraySymbol(coinraySymbol: string) {
     this.dispatchEvent('coinraySymbolWillChange', {coinraySymbol});
+    this.stop();
+
     this.coinraySymbol = coinraySymbol;
 
-    this.broadCastMarketUpdate();
-    this.broadCastOrderBook().then();
-    this.broadCastTrades().then();
-
+    this.startOrderBook();
+    this.startTrades();
     this.dispatchEvent('coinraySymbolChanged', {coinraySymbol});
   }
 
   clear() {
     this.coinraySymbol = null;
-    this.removeAllListeners()
+    this.removeAllListeners();
+    this.stop();
+  }
+
+  stop() {
+    this.stopOrderBook();
+    this.stopTrades();
+
+    this.trades = [];
+    this.orderBook = {
+      bids: {},
+      asks: {}
+    };
   }
 
   getMarket() {
@@ -49,22 +53,6 @@ export default class CurrentMarket extends EventEmitter {
       return this.coinrayCache.getMarket(this.coinraySymbol)
     } else {
       throw "CoinraySymbol not loaded"
-    }
-  }
-
-  async getTrades(): Promise<{ coinraySymbol: string, trades: Trade[] }> {
-    const coinraySymbol = this.coinraySymbol;
-    const trades = await this.coinrayCache.getTrades(coinraySymbol);
-    if (coinraySymbol === this.coinraySymbol) {
-      return {coinraySymbol, trades};
-    }
-  }
-
-  async getOrderBook(): Promise<{ coinraySymbol: string, orderBook: OrderBook }> {
-    const coinraySymbol = this.coinraySymbol;
-    const orderBook = await this.coinrayCache.getOrderBook(this.coinraySymbol);
-    if (coinraySymbol === this.coinraySymbol) {
-      return {coinraySymbol, orderBook};
     }
   }
 
@@ -86,65 +74,100 @@ export default class CurrentMarket extends EventEmitter {
 
   subscribeMarketUpdates = (callback) => {
     this.on("marketUpdated", callback);
-    this.broadCastMarketUpdate()
+    this.subscribeOrderBook(this.handleMarketUpdate);
+    this.subscribeTrades(this.handleMarketUpdate);
     return callback;
   };
 
-  broadCastMarketUpdate = ({lastPrice, bidPrice, askPrice}: any = {}) => {
-    if (!this.coinraySymbol) {
+  handleMarketUpdate = ({data: {type, coinraySymbol, ...rest}}) => {
+    if (this.coinraySymbol !== coinraySymbol) {
+      this.unsubscribeOrderBook(this.handleOrderBook);
+      this.unsubscribeTrades(this.handleOrderBook);
       return
     }
-    const callbacks = this.listeners['marketUpdated'];
-    if (callbacks && callbacks.length > 0) {
-      this.setTimeout('broadCastMarketUpdate', this.refreshRate, this.broadCastMarketUpdate);
-      const market = this.getMarket();
-      market.updateTicker({lastPrice, bidPrice, askPrice});
-      callbacks.forEach((callback) => {
-        callback(market)
-      });
+
+    switch (type) {
+      case "trades:snapshot":
+      case "trades:update": {
+        const {trades} = rest;
+        const market = this.getMarket();
+        const lastPrice = trades[0].price;
+        if (!market.lastPrice.eq(lastPrice)) {
+          market.updateTicker({lastPrice});
+          this.dispatchEvent('marketUpdated', {market})
+        }
+        break;
+      }
+      case "orderBook:snapshot":
+      case "orderBook:update": {
+        const {orderBook: {bids, asks}} = rest;
+        const market = this.getMarket();
+        const askPrice = asks[0].price;
+        const bidPrice = bids[0].price;
+        if (!market.askPrice.eq(askPrice) || !market.bidPrice.eq(bidPrice)) {
+          market.updateTicker({askPrice, bidPrice});
+          this.dispatchEvent('marketUpdated', {market})
+        }
+        break;
+      }
     }
+
   };
 
   unsubscribeMarketUpdates = (callback) => {
+    this.unsubscribeOrderBook(this.handleMarketUpdate);
+    this.unsubscribeTrades(this.handleMarketUpdate);
     this.off('marketUpdated', callback)
   };
 
   subscribeOrderBook = (callback) => {
     this.on('orderBookUpdated', callback);
-    this.broadCastOrderBook();
+    this.startOrderBook();
     return callback;
   };
 
-  broadCastOrderBook = async () => {
-    if (this.loadingOrderBook || !this.coinraySymbol) {
+  startOrderBook = () => {
+    if (this.hasListeners("orderBookUpdated")) {
+      this.api.subscribeOrderBook({coinraySymbol: this.coinraySymbol}, this.handleOrderBook);
+    }
+  };
+
+  stopOrderBook = () => {
+    if (this.coinraySymbol) {
+      this.api.unsubscribeOrderBook({coinraySymbol: this.coinraySymbol}, this.handleOrderBook);
+    }
+  };
+
+  handleOrderBook = async ({type, coinraySymbol, orderBook}) => {
+    if (this.coinraySymbol !== coinraySymbol) {
+      this.api.unsubscribeOrderBook({coinraySymbol}, this.handleOrderBook);
       return
     }
+    const {bids, asks} = orderBook;
 
-    const callbacks = this.listeners['orderBookUpdated'];
-    if (callbacks && callbacks.length > 0) {
-      try {
-        this.loadingOrderBook = true;
-        this.setTimeout('broadCastOrderBook', this.refreshRate, this.broadCastOrderBook);
-        const orderBook = await this.getOrderBook();
-
-        if (orderBook) {
-          callbacks.forEach((callback) => {
-            callback(orderBook)
-          });
+    const update = (side, updates) => {
+      updates.map(({price, quantity}) => {
+        if (quantity.gt(0)) {
+          side[price.toFixed(12)] = {price, quantity}
+        } else {
+          delete side[price.toFixed(12)]
         }
+      });
+    };
 
-        const lastAsk = orderBook.orderBook.asks[0];
-        const lastBid = orderBook.orderBook.bids[0];
-        if (lastAsk && lastBid) {
-          this.broadCastMarketUpdate({
-            askPrice: lastAsk.price,
-            bidPrice: lastBid.price
-          });
+    if (type === "orderBook:snapshot") {
+      this.orderBook.bids = _.keyBy(bids, ({price}) => price.toFixed(12));
+      this.orderBook.asks = _.keyBy(asks, ({price}) => price.toFixed(12));
+      this.dispatchEvent("orderBookUpdated", {type, coinraySymbol, orderBook: orderBook})
+    } else {
+      update(this.orderBook.bids, bids);
+      update(this.orderBook.asks, asks);
+      this.dispatchEvent("orderBookUpdated", {
+        type, coinraySymbol, orderBook: {
+          bids: Object.values(this.orderBook.bids).sort(({price: left}, {price: right}) => right.minus(left)),
+          asks: Object.values(this.orderBook.asks).sort(({price: left}, {price: right}) => left.minus(right)),
         }
-      } finally {
-        this.setTimeout('broadCastOrderBook', this.refreshRate, this.broadCastOrderBook);
-        this.loadingOrderBook = false
-      }
+      })
     }
   };
 
@@ -154,51 +177,33 @@ export default class CurrentMarket extends EventEmitter {
 
   subscribeTrades = (callback) => {
     this.on('tradesUpdated', callback);
-    this.broadCastTrades();
+    this.startTrades();
     return callback;
   };
 
-  broadCastTrades = async () => {
-    if (this.loadingTrades || !this.coinraySymbol) {
+  startTrades = () => {
+    if (this.hasListeners("tradesUpdated")) {
+      this.api.subscribeTrades({coinraySymbol: this.coinraySymbol}, this.handleTrades);
+    }
+  };
+
+  stopTrades = () => {
+    if (this.coinraySymbol) {
+      this.api.unsubscribeTrades({coinraySymbol: this.coinraySymbol}, this.handleTrades);
+    }
+  };
+
+  handleTrades = async ({type, coinraySymbol, trades}) => {
+    if (this.coinraySymbol !== coinraySymbol) {
+      this.api.unsubscribeTrades({coinraySymbol}, this.handleTrades);
       return
     }
+    this.trades = [...trades, ...this.trades].slice(0, 100);
 
-    const callbacks = this.listeners['tradesUpdated'];
-    if (callbacks && callbacks.length > 0) {
-      try {
-        this.loadingTrades = true;
-        this.setTimeout('broadCastTrades', this.refreshRate, this.broadCastTrades);
-        const trades = await this.getTrades();
-        if (trades) {
-          callbacks.forEach((callback) => {
-            callback(trades)
-          });
-          const lastTrade = trades.trades[0];
-          if (lastTrade) {
-            this.broadCastMarketUpdate({
-              lastPrice: lastTrade.price,
-            });
-          }
-        }
-      } finally {
-        this.loadingTrades = false;
-        this.setTimeout('broadCastTrades', this.refreshRate, this.broadCastTrades);
-      }
-    }
+    this.dispatchEvent('tradesUpdated', {type, coinraySymbol, trades: this.trades})
   };
 
   unsubscribeTrades = (callback) => {
     this.off('tradesUpdated', callback)
   };
-
-  setTimeout(type, time, callback) {
-    this.clearTimeout(type);
-    this.timeouts[type] = setTimeout(callback, time)
-  }
-
-  clearTimeout(type) {
-    if (this.timeouts[type]) {
-      clearTimeout(this.timeouts[type])
-    }
-  }
 }

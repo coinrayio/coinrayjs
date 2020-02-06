@@ -58,7 +58,7 @@ export function jwtExpired(token: string) {
 
   try {
     let jwt = JSON.parse(atob(token.split(".")[1]));
-    return jwt.exp < unix() - 15 * MINUTES
+    return jwt.exp < unix()
   } catch (error) {
     return true
   }

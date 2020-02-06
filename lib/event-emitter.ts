@@ -28,10 +28,14 @@ export default class EventEmitter {
     }
   };
 
-  dispatchEvent = (type, data = {}) => {
-    const callbacks = this.listeners[type];
+  hasListeners = (type) => {
+    return this.listeners[type] && this.listeners[type].length > 0
+  };
+
+  dispatchEvent = (eventName, data = {}) => {
+    const callbacks = this.listeners[eventName];
     if (callbacks && callbacks.length > 0) {
-      callbacks.map((callback) => callback({type, data}))
+      callbacks.map((callback) => callback({eventName, data}))
     }
   }
 }

@@ -40,7 +40,7 @@ export default class Coinray {
   private _token: string;
   private _sessionKey: string;
   private _credential: string;
-  private _onTokenExpired?: () => Promise<void>;
+  private _onTokenExpired?: () => Promise<string>;
   private _tokenCheckInterval: any;
   private _onError?: (event: any) => void;
   private _onOpen?: (event: any) => void;
@@ -55,9 +55,11 @@ export default class Coinray {
   private _candles: any = {};
 
   private _channels: any = {};
-  private _connected: boolean = false;
+  private _connected: Promise<boolean>;
+  private markConnected: any;
   private _publicKey: any;
-  _refreshingToken: Promise<void>;
+  _refreshingToken: Promise<string>;
+  private onReconnect: any;
 
   constructor(token: string, apiEndpoint = "https://coinray.io", websocketEndpoint = "wss://ws.coinray.io/v1") {
     this._token = token;
@@ -82,28 +84,32 @@ export default class Coinray {
     this.disconnect()
   }
 
-  async checkToken() {
+  checkToken = async () => {
     if (jwtExpired(this._token) && this._onTokenExpired) {
       if (!this._refreshingToken) {
         this._refreshingToken = this._onTokenExpired();
       }
-      await this._refreshingToken;
-      return !jwtExpired(this._token);
+      this._token = await this._refreshingToken;
+      if (!jwtExpired(this._token)) {
+        this.reconnect()
+      } else {
+        return false
+      }
     }
     return true;
-  }
+  };
 
   setTransport(transport: any) {
     this._transport = transport
   }
 
-  onTokenExpired(callback: () => Promise<void>) {
+  onTokenExpired(callback: () => Promise<string>) {
     this._onTokenExpired = callback;
-    this._tokenCheckInterval = setInterval(this.checkToken, 5 * MINUTES)
+    this._tokenCheckInterval = setInterval(this.checkToken, 5000);
   }
 
   refreshToken(token: string) {
-    this._token = token
+    this._token = token;
   }
 
   async getToken() {
@@ -115,25 +121,38 @@ export default class Coinray {
     }
   }
 
-  disconnect() {
+  reconnect = () => {
+    if (this._connected) {
+      // @ts-ignore
+      this.socket.conn.close();
+      Object.keys(this._tradeListeners).forEach((coinraySymbol) => {
+        const channel = this.getChannel("trades");
+        channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
+      });
+      Object.keys(this._orderbookListeners).forEach((coinraySymbol) => {
+        const channel = this.getChannel("orderbooks");
+        channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
+      });
+    }
+  };
+
+  disconnect = () => {
     if (this._socket) {
       this._socket.disconnect();
       this._socket = undefined
     }
-    this._connected = false
-  }
+    this._connected = undefined
+  };
 
   async connect() {
     if (this._connected) {
+      await this._connected;
       return
+    } else {
+      this._connected = new Promise((resolve) => {
+        this.markConnected = resolve
+      })
     }
-    const token = await this.getToken();
-    this._connected = true;
-
-    this._socket = new Socket(this.config.websocketEndpoint, {
-      transport: this._transport,
-      params: {token: token, client: "coinrayjs", version: VERSION}
-    });
 
     // @ts-ignore
     this.socket.onOpen((event: any) => {
@@ -149,7 +168,8 @@ export default class Coinray {
       }
     });
 
-    this.socket.connect()
+    this.socket.connect();
+    this.markConnected();
   }
 
   onOpen(callback: (event: any) => void) {
@@ -169,39 +189,40 @@ export default class Coinray {
 
     await this.connect();
     const channel = this.getChannel("trades");
-    channel.on("update", ({symbol, trades}) => {
-      const callbacks = Object.values(this._tradeListeners[symbol]) as [];
-      const parsedTrades = trades.map(Coinray._parseTrade);
-      callbacks.map((callback: (payload: any) => void) => callback({
-        coinraySymbol: symbol,
-        type: "update",
-        trades: parsedTrades
-      }))
-    });
     channel.on("snapshot", ({symbol, trades}) => {
       const callbacks = Object.values(this._tradeListeners[symbol]) as [];
       const parsedTrades = trades.map(Coinray._parseTrade);
       callbacks.map((callback: (payload: any) => void) => callback({
+        type: "trades:snapshot",
         coinraySymbol: symbol,
-        type: "snapshot",
+        trades: parsedTrades
+      }))
+    });
+    channel.on("update", ({symbol, trades}) => {
+      const callbacks = Object.values(this._tradeListeners[symbol]) as [];
+      const parsedTrades = trades.map(Coinray._parseTrade);
+      callbacks.map((callback: (payload: any) => void) => callback({
+        type: "trades:update",
+        coinraySymbol: symbol,
         trades: parsedTrades
       }))
     });
     channel.on("error", (payload) => console.error(payload));
     channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
+
     return callback
   }
 
   unsubscribeTrades({coinraySymbol}: MarketParam, callback?: (payload: any) => void) {
-    if (callback) {
+    if (callback && this._tradeListeners[coinraySymbol]) {
       this._tradeListeners[coinraySymbol] = this._tradeListeners[coinraySymbol].filter((c: (payload: any) => void) => c !== callback)
+
+      if (this._tradeListeners[coinraySymbol].length === 0) {
+        this.getChannel("trades")
+            .push("unsubscribe", {symbols: coinraySymbol}, 5000)
+      }
     } else {
       this._tradeListeners[coinraySymbol] = []
-    }
-
-    if (this._tradeListeners[coinraySymbol].length === 0) {
-      this.getChannel("trades")
-          .push("unsubscribe", {symbols: coinraySymbol}, 5000)
     }
   }
 
@@ -214,27 +235,27 @@ export default class Coinray {
 
     await this.connect();
     const channel = this.getChannel("orderbooks");
-    channel.on("update", ({orderbooks}) => {
-      const incoming_symbols = Object.keys(orderbooks);
-      incoming_symbols.forEach(symbol => {
-        const callbacks = Object.values(this._orderbookListeners[symbol]) as [];
-        const parsedOrderBook = Coinray._parseOrderBook(orderbooks[symbol]);
-        callbacks.map((callback: (payload: any) => void) => callback({
-          coinraySymbol: symbol,
-          type: "update",
-          orderbook: parsedOrderBook
-        }))
-      })
-    });
     channel.on("snapshot", ({orderbooks}) => {
       const incoming_symbols = Object.keys(orderbooks);
       incoming_symbols.forEach(symbol => {
         const callbacks = Object.values(this._orderbookListeners[symbol]) as [];
         const parsedOrderBook = Coinray._parseOrderBook(orderbooks[symbol]);
         callbacks.map((callback: (payload: any) => void) => callback({
+          type: "orderBook:snapshot",
           coinraySymbol: symbol,
-          type: "snapshot",
-          orderbook: parsedOrderBook
+          orderBook: parsedOrderBook
+        }))
+      })
+    });
+    channel.on("update", ({orderbooks}) => {
+      const incoming_symbols = Object.keys(orderbooks);
+      incoming_symbols.forEach(symbol => {
+        const callbacks = Object.values(this._orderbookListeners[symbol]) as [];
+        const parsedOrderBook = Coinray._parseOrderBook(orderbooks[symbol]);
+        callbacks.map((callback: (payload: any) => void) => callback({
+          type: "orderBook:update",
+          coinraySymbol: symbol,
+          orderBook: parsedOrderBook
         }))
       })
     });
@@ -244,15 +265,15 @@ export default class Coinray {
   }
 
   unsubscribeOrderBook({coinraySymbol}: MarketParam, callback?: (payload: any) => void) {
-    if (callback) {
+    if (callback && this._orderbookListeners[coinraySymbol]) {
       this._orderbookListeners[coinraySymbol] = this._orderbookListeners[coinraySymbol].filter((c: (payload: any) => void) => c !== callback)
+
+      if (this._orderbookListeners[coinraySymbol].length === 0) {
+        this.getChannel("orderbooks")
+            .push("unsubscribe", {symbols: coinraySymbol}, 5000)
+      }
     } else {
       this._orderbookListeners[coinraySymbol] = []
-    }
-
-    if (this._orderbookListeners[coinraySymbol].length === 0) {
-      this.getChannel("orderbooks")
-          .push("unsubscribe", {symbols: coinraySymbol}, 5000)
     }
   }
 
@@ -265,21 +286,23 @@ export default class Coinray {
     }
     this._candleListeners[candleId] = [callback];
 
-    const lastCandle = await this.fetchLastCandle({coinraySymbol, resolution});
-    this._candles[candleId] = lastCandle || {time: 0};
-
     const candleCallback = ({coinraySymbol, trades}: any) => {
       const callbacks = Object.values(this._candleListeners[candleId]) as [];
-      const candles = Coinray._tradesToCandle(resolution, trades);
-      candles.map((candle) => {
-        this._candles[candleId] = Coinray._mergeCandle(this._candles[candleId], candle)
-      });
+      const lastCandle = Coinray._tradesToLastCandle(resolution, trades);
 
-      callbacks.map((callback: (payload: any) => void) => callback({
-        coinraySymbol: coinraySymbol,
-        candle: this._candles[candleId]
-      }))
+      if (lastCandle) {
+        this._candles[candleId] = Coinray._mergeCandle(this._candles[candleId], lastCandle);
+
+        callbacks.map((callback: (payload: any) => void) => callback({
+          coinraySymbol,
+          resolution,
+          candle: this._candles[candleId]
+        }))
+      }
     };
+
+    const lastCandle = await this.fetchLastCandle({coinraySymbol, resolution});
+    this._candles[candleId] = lastCandle || {time: 0};
 
     if (this._candleTradeListeners[coinraySymbol]) {
       this._candleTradeListeners[coinraySymbol][candleId] = candleCallback;
@@ -295,7 +318,7 @@ export default class Coinray {
     const candleId = `${coinraySymbol}-${resolution}`;
 
     if (callback && this._candleListeners[candleId]) {
-      this._candleListeners[candleId] = this._candleListeners[candleId].filter((c: (payload: any) => void) => c !== callback)
+      this._candleListeners[candleId] = this._candleListeners[candleId].filter((c) => c !== callback)
     } else {
       this._candleListeners[candleId] = []
     }
@@ -348,7 +371,13 @@ export default class Coinray {
         exchange
       }
     });
-    return markets.map((market) => Market.Create(market, this))
+    return markets.map((market) => {
+      try {
+        return Market.Create(market, this)
+      } catch (error) {
+        return new Market(market, this)
+      }
+    })
   }
 
   async fetchTrades(coinraySymbol): Promise<Trade[]> {
@@ -457,9 +486,24 @@ export default class Coinray {
 
 
   private get socket(): Socket {
-    if (!this._socket) {
-      throw new Error("Socket not present")
+    if (!this._token) {
+      throw new Error("Token not present")
     }
+
+    if (!this._socket) {
+      this._socket = new Socket(this.config.websocketEndpoint, {
+        transport: this._transport,
+        reconnectAfterMs: (tries) => {
+          if (jwtExpired(this._token)) {
+            return 30000
+          } else {
+            return 1000
+          }
+        }
+      });
+    }
+    // @ts-ignore
+    this._socket.params = () => ({reconnect: true, token: this._token, client: "coinrayjs", version: VERSION});
     return this._socket
   }
 
@@ -582,46 +626,46 @@ export default class Coinray {
     }
   }
 
-  private static _tradesToCandle(resolution: string, trades: Trade[]): Candle[] {
+  private static _tradesToLastCandle(resolution: string, trades: Trade[]): Candle {
     const seconds = Coinray._resolutionToSeconds(resolution);
 
-    const groupedTrades = _.groupBy(trades, (trade: Trade) => {
-      const unix = Math.floor(trade.time.getTime());
-      return unix - (unix % seconds)
+    const currentTime = new Date().getTime();
+    const startDate = new Date(currentTime - (currentTime % seconds));
+
+    const currentCandleTrades = trades.filter((trade) => trade.time >= startDate);
+
+    if (currentCandleTrades.length === 0) {
+      return undefined
+    }
+
+    let first = currentCandleTrades[0];
+    let open, low, high, close;
+    let baseVolume = new BigNumber(0);
+    let quoteVolume = new BigNumber(0);
+
+    open = low = high = close = first.price;
+
+    currentCandleTrades.map(({price, quantity}: Trade) => {
+      low = BigNumber.min(low, price);
+      high = BigNumber.max(high, price);
+      close = price;
+      baseVolume = baseVolume.plus(quantity);
+      quoteVolume = quoteVolume.plus(quantity.multipliedBy(price));
     });
 
-    const candles: Candle[] = [];
-    _.forEach(groupedTrades, (trades, time) => {
-      let first = trades[0];
-      let open, low, high, close;
-      let baseVolume = new BigNumber(0);
-      let quoteVolume = new BigNumber(0);
-
-      open = low = high = close = first.price;
-
-      trades.map(({price, quantity}: Trade) => {
-        low = BigNumber.min(low, price);
-        high = BigNumber.max(high, price);
-        close = price;
-        baseVolume = baseVolume.plus(quantity);
-        quoteVolume = quoteVolume.plus(quantity.multipliedBy(price));
-      });
-
-      candles.push({
-        time: safeTime(time),
-        open,
-        high,
-        low,
-        close,
-        baseVolume,
-        quoteVolume,
-      })
-    });
-    return candles
+    return {
+      time: new Date(startDate),
+      open,
+      high,
+      low,
+      close,
+      baseVolume,
+      quoteVolume,
+    }
   };
 
   private static _mergeCandle(currentCandle: Candle, candle: Candle): Candle {
-    if (currentCandle.time !== candle.time) {
+    if (currentCandle.time < candle.time) {
       return candle
     }
 
@@ -636,8 +680,6 @@ export default class Coinray {
 
   private static _resolutionToSeconds(resolution: string) {
     if (resolution.indexOf("W") > 0) {
-      return parseInt(resolution) * 24 * 60 * 60 * 1000
-    } else if (resolution.indexOf("D") > 0) {
       return parseInt(resolution) * 24 * 60 * 60 * 1000
     } else if (resolution.indexOf("D") > 0) {
       return parseInt(resolution) * 24 * 60 * 60 * 1000
