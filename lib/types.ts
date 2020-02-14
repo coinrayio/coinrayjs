@@ -58,6 +58,7 @@ export interface TradeList {
 export enum OrderType {
   LIMIT = "limit",
   MARKET = "market",
+  STOP_LIMIT = "stopLimit",
   LIMIT_LADDER = "limitLadder",
 }
 
@@ -90,9 +91,8 @@ export interface CancelOrderParams extends BaseParams {
 }
 
 export interface BaseOrderParams {
-  exchangeCode: string
-  quoteCurrency: string
-  baseCurrency: string
+  externalId?: string
+  coinraySymbol: string
   precisionAmount: number
   precisionPrice: number
   minBaseAmount: BigNumber

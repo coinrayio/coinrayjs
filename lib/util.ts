@@ -128,7 +128,7 @@ export function errorHelper(field: string, d: any, type: string, nullable: boole
   throw new TypeError('Expected ' + type + " at " + field + " but found:\n" + JSON.stringify(d));
 }
 
-export function safeBigNumber(d: string | number): BigNumber {
+export function safeBigNumber(d: string | number | BigNumber): BigNumber {
   return new BigNumber(d)
 }
 
