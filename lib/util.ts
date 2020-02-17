@@ -129,6 +129,9 @@ export function errorHelper(field: string, d: any, type: string, nullable: boole
 }
 
 export function safeBigNumber(d: string | number | BigNumber): BigNumber {
+  if (BigNumber.isBigNumber(d)) {
+    return d
+  }
   return new BigNumber(d)
 }
 

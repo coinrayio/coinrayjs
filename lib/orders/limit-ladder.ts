@@ -3,6 +3,7 @@ import BigNumber from "bignumber.js";
 import LimitOrder, {LimitOrderParams} from "./limit";
 import _ from "lodash"
 import {safeBigNumber, safeInteger} from "../util";
+import BaseOrder from "./base";
 
 export enum PriceScales {
   LINEAR = "LINEAR",
@@ -75,7 +76,11 @@ interface LimitLadderOrderParams extends LimitOrderParams {
   sizeScales?: Array<number>
 }
 
-export default class LimitLadderOrder extends LimitOrder {
+export default class LimitLadderOrder extends BaseOrder {
+  baseAmount: BigNumber;
+  quoteAmount: BigNumber;
+  price: BigNumber;
+  lockedOn: string;
   otherPrice: BigNumber;
   numOrders: number;
   priceScale: PriceScales;
@@ -86,10 +91,22 @@ export default class LimitLadderOrder extends LimitOrder {
   orderType = OrderType.LIMIT_LADDER;
 
   constraints() {
-    const limitConstraints = super.constraints();
-
     return {
-      ...limitConstraints,
+      baseAmount: {
+        bigNumericality: {
+          greaterThan: this.minBaseAmount.toNumber(),
+        }
+      },
+      quoteAmount: {
+        bigNumericality: {
+          greaterThan: 0,
+        }
+      },
+      price: {
+        bigNumericality: {
+          greaterThan: 0,
+        }
+      },
       otherPrice: {
         bigNumericality: {
           greaterThan: 0,
@@ -109,12 +126,19 @@ export default class LimitLadderOrder extends LimitOrder {
     this.numOrders = safeInteger(params.numOrders);
     this.priceScale = params.priceScale || PriceScales.CUSTOM;
     this.sizeScale = params.sizeScale || SizeScales.CUSTOM;
+    this.price = safeBigNumber(params.price || "0");
     this.lockedOn = params.lockedOn;
+    this.baseAmount = safeBigNumber(params.baseAmount || "0");
+    this.quoteAmount = safeBigNumber(params.quoteAmount || "0");
 
     this.priceScales = params.priceScales || PRICE_SCALES[this.priceScale](this.numOrders);
     this.sizeScales = params.sizeScales || SIZE_SCALES[this.sizeScale](this.numOrders);
 
-    this.getOrders()
+    if (this.quoteAmount.gt(0) && this.lockedOn === "quoteAmount") {
+      this.updateQuoteAmount(this.quoteAmount)
+    } else {
+      this.updateBaseAmount(this.baseAmount)
+    }
   }
 
   updateNumOrders(numOrders: number) {
@@ -122,7 +146,7 @@ export default class LimitLadderOrder extends LimitOrder {
   }
 
   updatePrice(price: BigNumber) {
-    super.updatePrice(price);
+    this.price = price;
     if (price && this.otherPrice.eq(0)) {
       this.otherPrice = price.multipliedBy(0.95).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice : 0)
     }
@@ -161,6 +185,10 @@ export default class LimitLadderOrder extends LimitOrder {
     this.recalculate()
   }
 
+  updateLockedOn(lockedOn: string) {
+    this.lockedOn = lockedOn
+  }
+
   recalculate() {
     if (this.lockedOn === "baseAmount") {
       this.updateBaseAmount(this.baseAmount)
@@ -170,33 +198,35 @@ export default class LimitLadderOrder extends LimitOrder {
   }
 
   updateQuoteAmount(quoteAmount: BigNumber) {
-    this.updateLockedOn("quoteAmount");
     this.quoteAmount = quoteAmount;
     this.numOrders = Math.max(2, +this.numOrders);
 
-    const orders = this.getOrders();
+    const orders = this.getOrders("quoteAmount");
     if (orders.length > 0) {
       this.baseAmount = _.reduce(orders, (sum, order) => {
         return sum.plus(order.baseAmount)
       }, new BigNumber(0))
+    } else {
+      this.baseAmount = new BigNumber(0)
     }
   }
 
-  updateBaseAmount(baseAmount: BigNumber) {
-    this.updateLockedOn("baseAmount");
+  updateBaseAmount(baseAmount: BigNumber, setLockedOn = false) {
     this.baseAmount = baseAmount;
     this.numOrders = Math.max(2, +this.numOrders);
 
-    const orders = this.getOrders();
+    const orders = this.getOrders("baseAmount");
     if (orders.length > 0) {
       this.quoteAmount = _.reduce(orders, (sum, order) => {
         return sum.plus(order.quoteAmount)
       }, new BigNumber(0))
+    } else {
+      this.quoteAmount = new BigNumber(0)
     }
   }
 
-  getOrders(): Array<LimitOrder> {
-    const lockedOnAmount = this.lockedOn === "baseAmount" ? this.baseAmount : this.quoteAmount;
+  getOrders(lockedOn = this.lockedOn): Array<LimitOrder> {
+    const lockedOnAmount = lockedOn === "baseAmount" ? this.baseAmount : this.quoteAmount;
 
     if (!(this.priceScales && this.priceScales.length > 0 && this.sizeScales.length > 0 && lockedOnAmount.gt(0))) {
       return []
@@ -209,12 +239,13 @@ export default class LimitLadderOrder extends LimitOrder {
 
     return _.times(this.numOrders, (index) => {
       const amount = {
-        [this.lockedOn]: lockedOnAmount.multipliedBy(sizeScales[index])
+        [lockedOn]: lockedOnAmount.multipliedBy(sizeScales[index])
       };
 
       return new LimitOrder({
         ...this,
         ...amount,
+        lockedOn,
         price: this.price.plus(diff.multipliedBy(priceScales[index])).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice : 0),
       })
     })

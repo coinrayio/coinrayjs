@@ -1,5 +1,5 @@
 import BaseOrder from "./base";
-import {BaseOrderParams, OrderSide, OrderType} from "../types";
+import {BaseOrderParams, OrderType} from "../types";
 import BigNumber from "bignumber.js";
 import {safeBigNumber} from "../util";
 
@@ -45,25 +45,30 @@ export default class LimitOrder extends BaseOrder {
     this.baseAmount = safeBigNumber(params.baseAmount);
     this.quoteAmount = safeBigNumber(params.quoteAmount);
 
-    if (this.baseAmount && this.lockedOn === "baseAmount") {
+    if (this.quoteAmount.gt(0) && this.lockedOn === "quoteAmount") {
+      this.updateQuoteAmount(this.quoteAmount)
+    } else {
+      this.updateBaseAmount(this.baseAmount)
+    }
+  }
+
+  recalculate() {
+    if (this.lockedOn === "baseAmount") {
       this.updateBaseAmount(this.baseAmount)
     } else {
       this.updateQuoteAmount(this.quoteAmount)
     }
   }
 
-  updateBaseAmount(baseAmount: BigNumber) {
+  updateBaseAmount(baseAmount: BigNumber, setLockedOn = true) {
     this.baseAmount = baseAmount;
     this.quoteAmount = this.price.multipliedBy(this.baseAmount).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice : 0);
-
-    this.updateLockedOn("baseAmount")
   }
 
-  updateQuoteAmount(quoteAmount: BigNumber) {
+  updateQuoteAmount(quoteAmount: BigNumber, setLockedOn = true) {
     this.quoteAmount = quoteAmount;
 
     this.baseAmount = quoteAmount.dividedBy(this.price).decimalPlaces(this.precisionAmount > 0 ? this.precisionAmount : 0);
-    this.updateLockedOn("quoteAmount")
   }
 
   updateLockedOn(lockedOn: string) {

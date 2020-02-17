@@ -1,7 +1,6 @@
 import axios, {AxiosRequestConfig, Method} from "axios";
 import {Channel, Socket} from "phoenix";
-import {camelize, createJWT, encryptPayload, jwtExpired, MINUTES, safeBigNumber, safeTime, signHMAC} from "./util";
-import _ from "lodash"
+import {camelize, createJWT, encryptPayload, jwtExpired, safeBigNumber, safeTime, signHMAC} from "./util";
 
 import {JWK} from "node-jose";
 import {
@@ -10,9 +9,11 @@ import {
   CandleParam,
   CandlesParam,
   CreateOrderParams,
-  MarketParam, OrderBook,
+  MarketParam,
+  OrderBook,
+  OrderBookEntry,
+  Trade,
   UpdateOrderParams,
-  Trade, TradeList, OrderBookEntry,
 } from "./types";
 import Market from "./market";
 import Exchange from "./exchange";
@@ -69,12 +70,12 @@ export default class Coinray {
     }
   }
 
-  authenticateDevice(credential: string, sessionKey: string) {
+  authenticateDevice = (credential: string, sessionKey: string) => {
     this._credential = credential;
     this._sessionKey = sessionKey;
-  }
+  };
 
-  destroy() {
+  destroy = () => {
     this._tradeListeners = {};
     this._channels = {};
 
@@ -82,7 +83,7 @@ export default class Coinray {
       clearInterval(this._tokenCheckInterval)
     }
     this.disconnect()
-  }
+  };
 
   checkToken = async () => {
     if (jwtExpired(this._token) && this._onTokenExpired) {
@@ -99,27 +100,27 @@ export default class Coinray {
     return true;
   };
 
-  setTransport(transport: any) {
+  setTransport = (transport: any) => {
     this._transport = transport
-  }
+  };
 
-  onTokenExpired(callback: () => Promise<string>) {
+  onTokenExpired = (callback: () => Promise<string>) => {
     this._onTokenExpired = callback;
     this._tokenCheckInterval = setInterval(this.checkToken, 5000);
-  }
+  };
 
-  refreshToken(token: string) {
+  refreshToken = (token: string) => {
     this._token = token;
-  }
+  };
 
-  async getToken() {
+  getToken = async () => {
     const tokenValid = await this.checkToken();
     if (tokenValid) {
       return this._token
     } else {
       throw new Error("Token is expired. call refreshToken in the onTokenExpired callback")
     }
-  }
+  };
 
   reconnect = () => {
     if (this._connected) {
@@ -144,7 +145,7 @@ export default class Coinray {
     this._connected = undefined
   };
 
-  async connect() {
+  connect = async () => {
     if (this._connected) {
       await this._connected;
       return
@@ -170,17 +171,17 @@ export default class Coinray {
 
     this.socket.connect();
     this.markConnected();
-  }
+  };
 
-  onOpen(callback: (event: any) => void) {
+  onOpen = (callback: (event: any) => void) => {
     this._onOpen = callback
-  }
+  };
 
-  onError(callback: (event: any) => void) {
+  onError = (callback: (event: any) => void) => {
     this._onError = callback
-  }
+  };
 
-  async subscribeTrades({coinraySymbol}: MarketParam, callback: (payload: any) => void) {
+  subscribeTrades = async ({coinraySymbol}: MarketParam, callback: (payload: any) => void) => {
     if (this._tradeListeners[coinraySymbol] && this._tradeListeners[coinraySymbol].length > 0) {
       this._tradeListeners[coinraySymbol].push(callback);
       return callback
@@ -211,11 +212,11 @@ export default class Coinray {
     channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
 
     return callback
-  }
+  };
 
-  unsubscribeTrades({coinraySymbol}: MarketParam, callback?: (payload: any) => void) {
+  unsubscribeTrades = ({coinraySymbol}: MarketParam, callback?: (payload: any) => void) => {
     if (callback && this._tradeListeners[coinraySymbol]) {
-      this._tradeListeners[coinraySymbol] = this._tradeListeners[coinraySymbol].filter((c: (payload: any) => void) => c !== callback)
+      this._tradeListeners[coinraySymbol] = this._tradeListeners[coinraySymbol].filter((c: (payload: any) => void) => c !== callback);
 
       if (this._tradeListeners[coinraySymbol].length === 0) {
         this.getChannel("trades")
@@ -224,9 +225,9 @@ export default class Coinray {
     } else {
       this._tradeListeners[coinraySymbol] = []
     }
-  }
+  };
 
-  async subscribeOrderBook({coinraySymbol}: MarketParam, callback: (payload: any) => void) {
+  subscribeOrderBook = async ({coinraySymbol}: MarketParam, callback: (payload: any) => void) => {
     if (this._orderbookListeners[coinraySymbol] && this._orderbookListeners[coinraySymbol].length > 0) {
       this._orderbookListeners[coinraySymbol].push(callback);
       return callback
@@ -262,11 +263,11 @@ export default class Coinray {
     channel.on("error", (payload) => console.error(payload));
     channel.push("subscribe", {symbols: coinraySymbol}, 10000);
     return callback
-  }
+  };
 
-  unsubscribeOrderBook({coinraySymbol}: MarketParam, callback?: (payload: any) => void) {
+  unsubscribeOrderBook = ({coinraySymbol}: MarketParam, callback?: (payload: any) => void) => {
     if (callback && this._orderbookListeners[coinraySymbol]) {
-      this._orderbookListeners[coinraySymbol] = this._orderbookListeners[coinraySymbol].filter((c: (payload: any) => void) => c !== callback)
+      this._orderbookListeners[coinraySymbol] = this._orderbookListeners[coinraySymbol].filter((c: (payload: any) => void) => c !== callback);
 
       if (this._orderbookListeners[coinraySymbol].length === 0) {
         this.getChannel("orderbooks")
@@ -275,9 +276,9 @@ export default class Coinray {
     } else {
       this._orderbookListeners[coinraySymbol] = []
     }
-  }
+  };
 
-  async subscribeCandles({coinraySymbol, resolution}: CandleParam, callback: (payload: any) => void) {
+  subscribeCandles = async ({coinraySymbol, resolution}: CandleParam, callback: (payload: any) => void) => {
     const candleId = `${coinraySymbol}-${resolution}`;
 
     if (this._candleListeners[candleId] && this._candleListeners[candleId].length > 0) {
@@ -312,9 +313,9 @@ export default class Coinray {
     await this.subscribeTrades({coinraySymbol}, candleCallback);
 
     return callback
-  }
+  };
 
-  unsubscribeCandles({coinraySymbol, resolution}: CandleParam, callback?: (payload: any) => void) {
+  unsubscribeCandles = ({coinraySymbol, resolution}: CandleParam, callback?: (payload: any) => void) => {
     const candleId = `${coinraySymbol}-${resolution}`;
 
     if (callback && this._candleListeners[candleId]) {
@@ -327,9 +328,9 @@ export default class Coinray {
       this.unsubscribeTrades({coinraySymbol}, this._candleTradeListeners[coinraySymbol][candleId]);
       delete this._candleTradeListeners[coinraySymbol][candleId];
     }
-  }
+  };
 
-  async fetchCandles({coinraySymbol, resolution, start, end}: CandlesParam): Promise<Candle[]> {
+  fetchCandles = async ({coinraySymbol, resolution, start, end}: CandlesParam): Promise<Candle[]> => {
     const {result} = await this.get("candles", {
       version: "v1",
       params: {
@@ -341,9 +342,9 @@ export default class Coinray {
     });
 
     return result.map(Coinray._parseCandle);
-  }
+  };
 
-  async fetchLastCandle({coinraySymbol, resolution}: CandleParam): Promise<Candle | undefined> {
+  fetchLastCandle = async ({coinraySymbol, resolution}: CandleParam): Promise<Candle | undefined> => {
     const {result} = await this.get("candles/latest", {
       version: "v1",
       params: {
@@ -355,16 +356,16 @@ export default class Coinray {
     if (result.length > 0) {
       return Coinray._parseCandle(result[0])
     }
-  }
+  };
 
-  async fetchExchanges(): Promise<Array<Exchange>> {
+  fetchExchanges = async (): Promise<Array<Exchange>> => {
     const {result: {exchanges}} = await this.get("exchanges", {
       version: "v1",
     });
     return exchanges.map((exhange) => Exchange.Create(exhange, this))
-  }
+  };
 
-  async fetchMarkets(exchange): Promise<Array<Market>> {
+  fetchMarkets = async (exchange): Promise<Array<Market>> => {
     const {result: {markets}} = await this.get("markets", {
       version: "v1",
       params: {
@@ -378,9 +379,9 @@ export default class Coinray {
         return new Market(market, this)
       }
     })
-  }
+  };
 
-  async fetchTrades(coinraySymbol): Promise<Trade[]> {
+  fetchTrades = async (coinraySymbol): Promise<Trade[]> => {
     const {result: trades} = await this.get("trades", {
       version: "v1",
       params: {
@@ -388,9 +389,9 @@ export default class Coinray {
       }
     });
     return trades.map(Coinray._parseTrade)
-  }
+  };
 
-  async fetchOrderBook(coinraySymbol): Promise<OrderBook> {
+  fetchOrderBook = async (coinraySymbol): Promise<OrderBook> => {
     const {result: {seq, asks, bids}} = await this.get("order_book", {
       version: "v1",
       params: {
@@ -399,9 +400,9 @@ export default class Coinray {
     });
 
     return Coinray._parseOrderBook({seq, asks, bids})
-  }
+  };
 
-  async createCredential(deviceId: string, password: string) {
+  createCredential = async (deviceId: string, password: string) => {
     const publicKey = await this.publicKey();
 
     try {
@@ -418,9 +419,9 @@ export default class Coinray {
     } catch (error) {
       throw error
     }
-  }
+  };
 
-  async wrapApiKey(apiKeySettings: {}) {
+  wrapApiKey = async (apiKeySettings: {}) => {
     const publicKey = await this.publicKey();
 
     try {
@@ -438,9 +439,9 @@ export default class Coinray {
     } catch (error) {
       throw error
     }
-  }
+  };
 
-  async createOrder(order: CreateOrderParams) {
+  createOrder = async (order: CreateOrderParams) => {
     try {
       const {result} = await this.post("order", {
         secret: this._sessionKey,
@@ -450,9 +451,9 @@ export default class Coinray {
     } catch (error) {
       throw error
     }
-  }
+  };
 
-  async updateOrder(order: UpdateOrderParams) {
+  updateOrder = async (order: UpdateOrderParams) => {
     try {
       const {result} = await this.patch("order", {
         secret: this._sessionKey,
@@ -462,9 +463,9 @@ export default class Coinray {
     } catch (error) {
       throw error
     }
-  }
+  };
 
-  async cancelOrder(order: CancelOrderParams) {
+  cancelOrder = async (order: CancelOrderParams) => {
     try {
       const {result} = await this.delete("order", {
         secret: this._sessionKey,
@@ -474,7 +475,7 @@ export default class Coinray {
     } catch (error) {
       throw error
     }
-  }
+  };
 
   async publicKey() {
     if (!this._publicKey) {
@@ -522,21 +523,17 @@ export default class Coinray {
     return channel
   }
 
-  async get(endpoint: string, {version = "v2", headers = {}, params = {}} = {}) {
-    return await this._request(endpoint, "GET", {version, headers, params})
-  }
+  get = async (endpoint: string, {version = "v2", headers = {}, params = {}} = {}) => await this._request(endpoint, "GET", {
+    version,
+    headers,
+    params
+  });
 
-  async post(endpoint: string, attributes) {
-    return await this._request(endpoint, "POST", attributes)
-  }
+  post = async (endpoint: string, attributes) => await this._request(endpoint, "POST", attributes);
 
-  async patch(endpoint: string, attributes) {
-    return await this._request(endpoint, "PATCH", attributes)
-  }
+  patch = async (endpoint: string, attributes) => await this._request(endpoint, "PATCH", attributes);
 
-  async delete(endpoint: string, attributes) {
-    return await this._request(endpoint, "delete", attributes)
-  }
+  delete = async (endpoint: string, attributes) => await this._request(endpoint, "delete", attributes);
 
   private async _request(endpoint: string, method: Method, {version = "v2", headers = {}, params = {}, body = {}, secret = ""}) {
     const token = await this.getToken();
