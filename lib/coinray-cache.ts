@@ -1,8 +1,8 @@
 import Coinray from "./coinray";
 import Exchange from "./exchange";
 import CandlesCache from "./candles-cache";
-import {filterMarket} from "./util";
-import {MarketMap} from "./types";
+import {filterMarkets} from "./util";
+import {MarketMap, MarketQuery} from "./types";
 import EventEmitter from "./event-emitter"
 
 interface ExchangeMap {
@@ -67,9 +67,9 @@ export default class CoinrayCache extends EventEmitter {
     await this.exchanges[exchangeCode].loadMarkets();
   };
 
-  searchMarkets(query: string): MarketMap {
+  searchMarkets(marketQuery: string | MarketQuery | MarketQuery[]): MarketMap {
     return Object.values(this.exchanges).reduce((acc, exchange) => {
-      acc = {...acc, ...filterMarket(exchange.markets, query)};
+      acc = {...acc, ...filterMarkets(exchange.markets, marketQuery)};
       return acc
     }, {});
   }

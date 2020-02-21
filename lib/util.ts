@@ -2,7 +2,7 @@ import {JWS, JWE, JWK, util} from "node-jose";
 import {hmac} from "node-forge";
 import {camelCase} from "lodash"
 import BigNumber from "bignumber.js";
-import {MarketMap} from "./types";
+import {MarketMap, MarketQuery} from "./types";
 import _ from "lodash";
 
 export const MINUTES = 60;
@@ -159,15 +159,35 @@ export function safeTime(d: string | number): Date {
   return new Date(time)
 }
 
-export function filterMarket(markets: MarketMap, query) {
-  if (!query || query.length === 0) {
+export function filterMarkets(markets: MarketMap, marketQuery: string | MarketQuery | (string | MarketQuery)[]) {
+  let queries: MarketQuery[] = marketQuery as MarketQuery[]
+  if (typeof (marketQuery) === "string") {
+    queries = [{query: marketQuery, marketProperty: "coinraySymbol"}]
+  } else if (!Array.isArray(marketQuery)) {
+    queries = [marketQuery as MarketQuery]
+  } else {
+    queries = marketQuery.map((q) => {
+      if (typeof (q) === "string") {
+        return {query: q, marketProperty: "coinraySymbol"}
+      } else if (!Array.isArray(q)) {
+        return q
+      }
+    })
+  }
+
+  if (queries.length === 0 || !queries.find(({query}) => !!query && !!query.length)) {
     return markets
   }
 
-  const keywords = query.toLowerCase().split(/[-_:\/\s]+/).filter((keyword) => keyword.length > 0);
+  let filteredMarkets = markets
 
-  return _.pickBy(markets, (market, key) => {
-    const coinraySymbol = key.toLowerCase();
-    return keywords.filter((keyword) => coinraySymbol.includes(keyword)).length === keywords.length
+  queries.forEach(({query, marketProperty}) => {
+    const keywords = query.toLowerCase().split(/[-_:\/\s]+/).filter((keyword) => keyword.length > 0);
+    filteredMarkets = _.pickBy(filteredMarkets, (market, key) => {
+      const searchKey = market[marketProperty].toLowerCase()
+      return keywords.filter((keyword) => searchKey.includes(keyword)).length === keywords.length
+    })
   })
+
+  return filteredMarkets
 }

@@ -31,6 +31,11 @@ export interface MarketMap {
   [key: string]: Market;
 }
 
+export interface MarketQuery {
+  query: string,
+  marketProperty: string
+}
+
 export interface OrderBookEntry {
   price: BigNumber,
   quantity: BigNumber
