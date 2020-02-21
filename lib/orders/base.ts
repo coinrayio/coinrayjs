@@ -2,8 +2,10 @@ import validate from "./validate"
 import {BaseOrderParams, MarketBalance, OrderSide} from "../types";
 import BigNumber from "bignumber.js";
 import {safeBigNumber, safeInteger} from "../util";
+import UUID from "uuid/v4"
 
 export default abstract class BaseOrder {
+  id = UUID();
   coinraySymbol: string;
   precisionAmount: number;
   precisionPrice: number;

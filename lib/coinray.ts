@@ -61,9 +61,11 @@ export default class Coinray {
   private _publicKey: any;
   _refreshingToken: Promise<string>;
   private onReconnect: any;
+  private _nonceOffset: number;
 
   constructor(token: string, apiEndpoint = "https://coinray.io", websocketEndpoint = "wss://ws.coinray.io/v1") {
     this._token = token;
+    this._nonceOffset = 0;
     this.config = {
       apiEndpoint,
       websocketEndpoint
@@ -111,6 +113,14 @@ export default class Coinray {
 
   refreshToken = (token: string) => {
     this._token = token;
+  };
+
+  getNonce = () => {
+    if (this._nonceOffset > 900) {
+      this._nonceOffset = 0
+    }
+    this._nonceOffset += 1;
+    return Math.floor(new Date().getTime() / 1000) * 1000 + this._nonceOffset
   };
 
   getToken = async () => {
@@ -539,7 +549,7 @@ export default class Coinray {
     const token = await this.getToken();
 
     const paramString = Object.entries(params).length > 0 ? '?' + Object.entries(params).map(([key, val]) => `${key}=${val}`).join('&') : "";
-    const nonce = new Date().getTime();
+    const nonce = this.getNonce();
     const requestUri = `/api/${version}/${endpoint}${paramString}`;
 
     if (version === "v2") {
