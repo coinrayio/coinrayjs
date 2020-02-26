@@ -36,6 +36,7 @@ export class CoinrayError extends Error {
 export default class Coinray {
   config: {
     apiEndpoint: string;
+    orderEndpoint: string;
     websocketEndpoint: string;
   };
   private _token: string;
@@ -63,12 +64,18 @@ export default class Coinray {
   private onReconnect: any;
   private _nonceOffset: number;
 
-  constructor(token: string, apiEndpoint = "https://coinray.io", websocketEndpoint = "wss://ws.coinray.io/v1") {
+  constructor(token: string, {apiEndpoint, orderEndpoint, websocketEndpoint} =
+      {
+        apiEndpoint: "https://coinray.io",
+        orderEndpoint: "https://coinray.io",
+        websocketEndpoint: "wss://ws.coinray.io/v1",
+      }) {
     this._token = token;
     this._nonceOffset = 0;
     this.config = {
-      apiEndpoint,
-      websocketEndpoint
+      apiEndpoint: apiEndpoint || "https://coinray.io",
+      orderEndpoint: orderEndpoint || apiEndpoint || "https://coinray.io",
+      websocketEndpoint: websocketEndpoint || "wss://ws.coinray.io/v1"
     }
   }
 
@@ -455,6 +462,7 @@ export default class Coinray {
     try {
       const {result} = await this.post("order", {
         secret: this._sessionKey,
+        apiEndpoint: this.config.orderEndpoint,
         body: {...order, credential: this._credential}
       });
       return result
@@ -467,6 +475,7 @@ export default class Coinray {
     try {
       const {result} = await this.patch("order", {
         secret: this._sessionKey,
+        apiEndpoint: this.config.orderEndpoint,
         body: {...order, credential: this._credential}
       });
       return result
@@ -479,6 +488,7 @@ export default class Coinray {
     try {
       const {result} = await this.delete("order", {
         secret: this._sessionKey,
+        apiEndpoint: this.config.orderEndpoint,
         body: {...order, credential: this._credential}
       });
       return result
@@ -533,8 +543,9 @@ export default class Coinray {
     return channel
   }
 
-  get = async (endpoint: string, {version = "v2", headers = {}, params = {}} = {}) => await this._request(endpoint, "GET", {
+  get = async (endpoint: string, {apiEndpoint = undefined, version = "v2", headers = {}, params = {}} = {}) => await this._request(endpoint, "GET", {
     version,
+    apiEndpoint,
     headers,
     params
   });
@@ -545,7 +556,7 @@ export default class Coinray {
 
   delete = async (endpoint: string, attributes) => await this._request(endpoint, "delete", attributes);
 
-  private async _request(endpoint: string, method: Method, {version = "v2", headers = {}, params = {}, body = {}, secret = ""}) {
+  private async _request(endpoint: string, method: Method, {apiEndpoint, version = "v2", headers = {}, params = {}, body = {}, secret = ""}) {
     const token = await this.getToken();
 
     const paramString = Object.entries(params).length > 0 ? '?' + Object.entries(params).map(([key, val]) => `${key}=${val}`).join('&') : "";
@@ -566,7 +577,7 @@ export default class Coinray {
 
     const options = {
       method,
-      url: this.config.apiEndpoint + requestUri,
+      url: (apiEndpoint || this.config.apiEndpoint) + requestUri,
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",

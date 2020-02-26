@@ -2,6 +2,7 @@ import BaseOrder from "./base";
 import {BaseOrderParams, OrderSide, OrderType} from "../types";
 import BigNumber from "bignumber.js";
 import LimitOrder, {LimitOrderParams} from "./limit";
+import {safeBigNumber} from "../util";
 
 interface StopLimitOrderParams extends LimitOrderParams {
   otherPrice: BigNumber
@@ -9,7 +10,7 @@ interface StopLimitOrderParams extends LimitOrderParams {
 
 export default class StopLimitOrder extends LimitOrder {
   otherPrice: BigNumber;
-  orderType = OrderType.STOP_LIMIT;
+  orderType = OrderType.STOP_LOSS_LIMIT;
 
   constraints() {
     const limitConstraints = super.constraints();
@@ -25,7 +26,7 @@ export default class StopLimitOrder extends LimitOrder {
 
   constructor(params: StopLimitOrderParams) {
     super(params);
-    this.otherPrice = params.otherPrice
+    this.otherPrice = safeBigNumber(params.otherPrice)
   }
 
   updatePrice(price: BigNumber) {

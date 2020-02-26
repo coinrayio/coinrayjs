@@ -61,10 +61,15 @@ export interface TradeList {
 }
 
 export enum OrderType {
-  LIMIT = "limit",
-  MARKET = "market",
-  STOP_LIMIT = "stopLimit",
-  LIMIT_LADDER = "limitLadder",
+  MARKET = "MARKET",
+  LIMIT = "LIMIT",
+  LIMIT_LADDER = "LIMIT_LADDER",
+  STOP_LOSS = "STOP_LOSS",
+  STOP_LOSS_LIMIT = "STOP_LOSS_LIMIT",
+  STOP_LOSS_MARKET = "STOP_LOSS_MARKET",
+  TAKE_PROFIT = "TAKE_PROFIT",
+  TAKE_PROFIT_LIMIT = "TAKE_PROFIT_LIMIT",
+  TAKE_PROFIT_MARKET = "TAKE_PROFIT_MARKET",
 }
 
 export enum OrderSide {BUY = "buy", SELL = "sell"}
@@ -92,6 +97,7 @@ export interface UpdateOrderParams extends BaseParams {
 }
 
 export interface CancelOrderParams extends BaseParams {
+  orderType: OrderType,
   orderId: string
 }
 
