@@ -4,7 +4,9 @@ import {
   checkArray,
   checkBoolean,
   checkNumber,
-  checkString, safeBigNumber, safeInteger,
+  checkString,
+  safeBigNumber,
+  safeInteger,
   throwIsArray,
   throwNotObject,
   throwNull2NonNull
@@ -27,6 +29,7 @@ export default class Exchange {
   public readonly quoteCurrencies: string[] | null;
   public readonly supportedResolutions: string[] | null;
   public markets: MarketMap;
+  public exchangeSymbols: {};
 
   public static Create(d: any, api: Coinray): Exchange {
     if (d === null || d === undefined) {
@@ -77,7 +80,8 @@ export default class Exchange {
     this.totalMarkets = safeInteger(d.totalMarkets);
     this.quoteCurrencies = d.quoteCurrencies;
     this.supportedResolutions = d.supportedResolutions;
-    this.markets = {}
+    this.markets = {};
+    this.exchangeSymbols = {}
   }
 
   clone() {
@@ -101,8 +105,13 @@ export default class Exchange {
 
     markets.reduce((mem, market) => {
       mem[market.coinraySymbol] = market;
+      this.exchangeSymbols[market.symbol] = market;
       return mem;
     }, this.markets)
+  }
+
+  getMarketByExchangeSymbol(exchangeSymbol) {
+    return this.getMarket(this.exchangeSymbols[exchangeSymbol])
   }
 
   getMarket(coinraySymbol) {
