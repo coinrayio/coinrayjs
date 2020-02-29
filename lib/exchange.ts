@@ -111,7 +111,7 @@ export default class Exchange {
   }
 
   getMarketByExchangeSymbol(exchangeSymbol) {
-    return this.getMarket(this.exchangeSymbols[exchangeSymbol])
+    return this.exchangeSymbols[exchangeSymbol]
   }
 
   getMarket(coinraySymbol) {
