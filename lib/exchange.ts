@@ -13,7 +13,7 @@ import {
 } from "./util";
 import BigNumber from "bignumber.js";
 import Coinray from "./coinray";
-import {MarketMap} from "./types";
+import {MarketMap, OrderType} from "./types";
 
 
 export default class Exchange {
@@ -28,6 +28,7 @@ export default class Exchange {
   public readonly totalMarkets: number;
   public readonly quoteCurrencies: string[] | null;
   public readonly supportedResolutions: string[] | null;
+  public readonly supportedOrderTypes: OrderType[] | null;
   public markets: MarketMap;
   public exchangeSymbols: {};
 
@@ -80,6 +81,7 @@ export default class Exchange {
     this.totalMarkets = safeInteger(d.totalMarkets);
     this.quoteCurrencies = d.quoteCurrencies;
     this.supportedResolutions = d.supportedResolutions;
+    this.supportedOrderTypes = d.supportedOrderTypes;
     this.markets = {};
     this.exchangeSymbols = {}
   }
