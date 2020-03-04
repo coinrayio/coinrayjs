@@ -106,7 +106,8 @@ export interface BaseOrderParams {
   coinraySymbol: string
   precisionAmount: number
   precisionPrice: number
-  minBaseAmount: BigNumber
+  minBase: BigNumber
+  minQuote: BigNumber
   makerFee: BigNumber
   takerFee: BigNumber
   side: OrderSide

@@ -1,4 +1,4 @@
-import {OrderType} from "../types";
+import {OrderSide, OrderType} from "../types";
 import BigNumber from "bignumber.js";
 import LimitOrder, {LimitOrderParams} from "./limit";
 import _ from "lodash"
@@ -91,15 +91,25 @@ export default class LimitLadderOrder extends BaseOrder {
   orderType = OrderType.LIMIT_LADDER;
 
   constraints() {
+    let maxBase = undefined;
+    let maxQuote = undefined;
+    if (this.side === OrderSide.BUY) {
+      maxQuote = this.balances.quote.available
+    } else {
+      maxBase = this.balances.base.available;
+    }
+
     return {
       baseAmount: {
         bigNumericality: {
-          greaterThan: this.minBaseAmount.toNumber(),
+          greaterThanOrEqualTo: this.minBase.toNumber(),
+          lessThanOrEqualTo: maxBase,
         }
       },
       quoteAmount: {
         bigNumericality: {
-          greaterThan: 0,
+          greaterThanOrEqualTo: this.minQuote.toNumber(),
+          lessThanOrEqualTo: maxQuote,
         }
       },
       price: {
@@ -195,6 +205,7 @@ export default class LimitLadderOrder extends BaseOrder {
     } else {
       this.updateQuoteAmount(this.quoteAmount)
     }
+    this.validate()
   }
 
   updateQuoteAmount(quoteAmount: BigNumber) {

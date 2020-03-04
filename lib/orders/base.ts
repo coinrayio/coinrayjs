@@ -9,25 +9,29 @@ export default abstract class BaseOrder {
   coinraySymbol: string;
   precisionAmount: number;
   precisionPrice: number;
-  minBaseAmount: BigNumber;
+  minBase: BigNumber;
+  minQuote: BigNumber;
   makerFee: BigNumber;
   takerFee: BigNumber;
   balances: MarketBalance;
   side: OrderSide;
   errors: any;
+  isValid: boolean;
   orderExternalId?: string;
 
   constructor(params: BaseOrderParams) {
     this.coinraySymbol = params.coinraySymbol;
     this.precisionAmount = safeInteger(params.precisionAmount);
     this.precisionPrice = safeInteger(params.precisionPrice);
-    this.minBaseAmount = safeBigNumber(params.minBaseAmount);
+    this.minBase = safeBigNumber(params.minBase);
+    this.minQuote = safeBigNumber(params.minQuote);
     this.makerFee = safeBigNumber(params.makerFee);
     this.takerFee = safeBigNumber(params.takerFee);
     this.balances = params.balances;
     this.side = params.side;
     this.orderExternalId = params.externalId;
-    this.errors = {}
+    this.errors = {};
+    this.isValid = true
   }
 
   abstract constraints(): object
@@ -42,7 +46,11 @@ export default abstract class BaseOrder {
     const errors = validate(this, this.constraints());
 
     if (errors) {
-      this.errors = errors
+      this.errors = errors;
+      this.isValid = false
+    } else {
+      this.errors = {};
+      this.isValid = true
     }
     return !errors
   }

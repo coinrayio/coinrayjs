@@ -2,9 +2,12 @@
 import BigNumber from "bignumber.js";
 import {
   checkBigNumber,
-  checkBoolean, checkNull,
+  checkBoolean,
+  checkNull,
   checkNumber,
-  checkString, safeBigNumber, safeFloat,
+  checkString,
+  safeBigNumber,
+  safeFloat,
   throwIsArray,
   throwNotObject,
   throwNull2NonNull
@@ -33,6 +36,10 @@ export default class Market {
   public readonly lowPrice: BigNumber;
   public readonly precisionAmount: number;
   public readonly precisionPrice: number;
+  public readonly precisionBase: number;
+  public readonly minBase: number;
+  public readonly precisionQuote: number;
+  public readonly minQuote: number;
   public readonly minTrade?: BigNumber;
   public readonly maxTrade?: BigNumber;
   public readonly makerFee: number;
@@ -73,6 +80,10 @@ export default class Market {
     checkBigNumber(d.lowPrice, true, "lowPrice");
     checkNumber(d.precisionAmount, false, "precisionAmount");
     checkNumber(d.precisionPrice, false, "precisionPrice");
+    checkNumber(d.precisionBase, false, "precisionBase");
+    checkNumber(d.minBase, true, "minBase");
+    checkNumber(d.precisionQuote, false, "precisionQuote");
+    checkNumber(d.minQuote, true, "minQuote");
     checkBigNumber(d.minTrade, false, "minTrade");
     checkNumber(d.maxTrade, true, "maxTrade");
     if (d.maxTrade === undefined) {
@@ -115,6 +126,10 @@ export default class Market {
     this.lowPrice = safeBigNumber(d.lowPrice);
     this.precisionAmount = d.precisionAmount;
     this.precisionPrice = d.precisionPrice;
+    this.precisionQuote = d.precisionQuote;
+    this.minQuote = d.minQuote;
+    this.precisionBase = d.precisionBase;
+    this.minBase = d.minBase;
     this.minTrade = safeBigNumber(d.minTrade);
     this.maxTrade = safeBigNumber(d.maxTrade);
     this.makerFee = safeFloat(d.makerFee);
@@ -130,7 +145,7 @@ export default class Market {
     this.updatedAt = d.updatedAt;
   }
 
-  updateTicker = ({lastPrice, bidPrice, askPrice} : any) => {
+  updateTicker = ({lastPrice, bidPrice, askPrice}: any) => {
     if (lastPrice) {
       this.lastPrice = lastPrice
     }
