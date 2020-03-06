@@ -182,10 +182,28 @@ export function filterMarkets(markets: MarketMap, marketQuery: string | MarketQu
   let filteredMarkets = markets
 
   queries.forEach(({query, marketProperty}) => {
-    const keywords = query.toLowerCase().split(/[-_:\/\s]+/).filter((keyword) => keyword.length > 0);
+    const keywords = query.toLowerCase().split(/[\s]+/).filter(Boolean);
     filteredMarkets = _.pickBy(filteredMarkets, (market, key) => {
-      const searchKey = market[marketProperty].toLowerCase()
-      return keywords.filter((keyword) => searchKey.includes(keyword)).length === keywords.length
+      const matchTo = market[marketProperty].toLowerCase()
+      return keywords.filter((keyword) => {
+        if (marketProperty === "coinraySymbol") {
+          if (keyword.match(/[-_:\/\\]+/)) {
+            const currencyKeywords = keyword.split(/[-_:\/\\]+/);
+            return market.baseCurrency.toLowerCase().includes(currencyKeywords[0]) && market.quoteCurrency.toLowerCase().includes(currencyKeywords[1]) ||
+              market.quoteCurrency.toLowerCase().includes(currencyKeywords[0]) && market.baseCurrency.toLowerCase().includes(currencyKeywords[1])
+          }
+
+          return ["exchangeCode", "baseCurrency", "quoteCurrency"].reduce((acc, key) => {
+            const matchWithKey = key === "exchangeCode" ?
+              market[key].toLowerCase().substr(0, keyword.length) === keyword :
+              market[key].toLowerCase().includes(keyword)
+            return acc || matchWithKey
+          }, false)
+        } else if (marketProperty === "exchangeCode") {
+          return matchTo.substr(0, keyword.length) === keyword
+        }
+        return matchTo.includes(keyword)
+      }).length === keywords.length
     })
   })
 
