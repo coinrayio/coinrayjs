@@ -22,22 +22,22 @@ export default class LimitOrder extends BaseOrder {
     let maxBase = undefined;
     let maxQuote = undefined;
     if (this.side === OrderSide.BUY) {
-      maxQuote = this.balances.quote.available
+      maxQuote = this.balances.quote || 0
     } else {
-      maxBase = this.balances.base.available;
+      maxBase = this.balances.base || 0
     }
 
     return {
       baseAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minBase.toNumber(),
-          lessThanOrEqualTo: maxBase,
+          lessThanOrEqualTo: maxBase?.toNumber(),
         }
       },
       quoteAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minQuote.toNumber(),
-          lessThanOrEqualTo: maxQuote,
+          lessThanOrEqualTo: maxQuote?.toNumber(),
         }
       },
       price: {

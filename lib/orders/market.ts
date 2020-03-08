@@ -17,22 +17,22 @@ export default class MarketOrder extends BaseOrder {
     let maxBase = undefined;
     let maxQuote = undefined;
     if (this.side === OrderSide.BUY) {
-      maxQuote = this.balances.quote.available
+      maxQuote = this.balances.quote;
     } else {
-      maxBase = this.balances.base.available;
+      maxBase = this.balances.base;
     }
 
     return {
       quoteAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minQuote.toNumber(),
-          lessThanOrEqualTo: maxBase,
+          lessThanOrEqualTo: maxBase?.toNumber(),
         }
       },
       baseAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minBase.toNumber(),
-          lessThanOrEqualTo: maxQuote,
+          lessThanOrEqualTo: maxQuote?.toNumber(),
         }
       }
     }

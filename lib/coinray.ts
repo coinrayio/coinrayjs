@@ -100,6 +100,7 @@ export default class Coinray {
         this._refreshingToken = this._onTokenExpired();
       }
       this._token = await this._refreshingToken;
+      this._refreshingToken = undefined;
       if (!jwtExpired(this._token)) {
         this.reconnect()
       } else {
