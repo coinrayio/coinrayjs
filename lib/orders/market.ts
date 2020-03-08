@@ -26,13 +26,13 @@ export default class MarketOrder extends BaseOrder {
       quoteAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minQuote.toNumber(),
-          lessThanOrEqualTo: maxBase?.toNumber(),
+          lessThanOrEqualTo: maxBase ? maxBase.toNumber() : undefined,
         }
       },
       baseAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minBase.toNumber(),
-          lessThanOrEqualTo: maxQuote?.toNumber(),
+          lessThanOrEqualTo: maxQuote ? maxQuote.toNumber() : undefined,
         }
       }
     }
