@@ -1,5 +1,4 @@
 import CoinrayCache from "./coinray-cache";
-import {OrderBook, Trade} from "./types";
 import EventEmitter from "./event-emitter";
 import Coinray from "./coinray";
 import _ from "lodash";
@@ -11,6 +10,8 @@ export default class CurrentMarket extends EventEmitter {
   private api: Coinray;
   private orderBook: { asks: {}; bids: {} };
   private trades: any[];
+  private tradesStarted: boolean;
+  private orderBookStarted: boolean;
 
   constructor(api: Coinray, coinrayCache: CoinrayCache) {
     super();
@@ -127,8 +128,9 @@ export default class CurrentMarket extends EventEmitter {
   };
 
   startOrderBook = () => {
-    if (this.hasListeners("orderBookUpdated")) {
+    if (!this.orderBookStarted && this.hasListeners("orderBookUpdated")) {
       this.api.subscribeOrderBook({coinraySymbol: this.coinraySymbol}, this.handleOrderBook);
+      this.orderBookStarted = true;
     }
   };
 
@@ -136,6 +138,7 @@ export default class CurrentMarket extends EventEmitter {
     if (this.coinraySymbol) {
       this.api.unsubscribeOrderBook({coinraySymbol: this.coinraySymbol}, this.handleOrderBook);
     }
+    this.orderBookStarted = false;
   };
 
   handleOrderBook = async ({type, coinraySymbol, orderBook}) => {
@@ -182,8 +185,9 @@ export default class CurrentMarket extends EventEmitter {
   };
 
   startTrades = () => {
-    if (this.hasListeners("tradesUpdated")) {
+    if (!this.tradesStarted && this.hasListeners("tradesUpdated")) {
       this.api.subscribeTrades({coinraySymbol: this.coinraySymbol}, this.handleTrades);
+      this.tradesStarted = true;
     }
   };
 
@@ -191,9 +195,10 @@ export default class CurrentMarket extends EventEmitter {
     if (this.coinraySymbol) {
       this.api.unsubscribeTrades({coinraySymbol: this.coinraySymbol}, this.handleTrades);
     }
+    this.tradesStarted = false;
   };
 
-  handleTrades = async ({type, coinraySymbol, trades}) => {
+  handleTrades = ({type, coinraySymbol, trades}) => {
     if (this.coinraySymbol !== coinraySymbol) {
       this.api.unsubscribeTrades({coinraySymbol}, this.handleTrades);
       return

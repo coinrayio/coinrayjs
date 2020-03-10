@@ -63,6 +63,8 @@ export default class Coinray {
   _refreshingToken: Promise<string>;
   private onReconnect: any;
   private _nonceOffset: number;
+  private tradesSubscribed: boolean = false;
+  private orderBookSubscribed: boolean = false;
 
   constructor(token: string, {apiEndpoint, orderEndpoint, websocketEndpoint} =
       {
@@ -208,6 +210,13 @@ export default class Coinray {
 
     await this.connect();
     const channel = this.getChannel("trades");
+    channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
+
+    if (this.tradesSubscribed) {
+      return callback
+    }
+    this.tradesSubscribed = true;
+
     channel.on("snapshot", ({symbol, trades}) => {
       const callbacks = Object.values(this._tradeListeners[symbol]) as [];
       const parsedTrades = trades.map(Coinray._parseTrade);
@@ -227,7 +236,6 @@ export default class Coinray {
       }))
     });
     channel.on("error", (payload) => console.error(payload));
-    channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
 
     return callback
   };
@@ -254,6 +262,13 @@ export default class Coinray {
 
     await this.connect();
     const channel = this.getChannel("orderbooks");
+    channel.push("subscribe", {symbols: coinraySymbol}, 10000);
+
+    if (this.orderBookSubscribed) {
+      return callback
+    }
+    this.orderBookSubscribed = true;
+
     channel.on("snapshot", ({orderbooks}) => {
       const incoming_symbols = Object.keys(orderbooks);
       incoming_symbols.forEach(symbol => {
@@ -279,7 +294,7 @@ export default class Coinray {
       })
     });
     channel.on("error", (payload) => console.error(payload));
-    channel.push("subscribe", {symbols: coinraySymbol}, 10000);
+
     return callback
   };
 
@@ -320,14 +335,14 @@ export default class Coinray {
       }
     };
 
-    const lastCandle = await this.fetchLastCandle({coinraySymbol, resolution});
-    this._candles[candleId] = lastCandle || {time: 0};
-
     if (this._candleTradeListeners[coinraySymbol]) {
       this._candleTradeListeners[coinraySymbol][candleId] = candleCallback;
     } else {
       this._candleTradeListeners[coinraySymbol] = {[candleId]: candleCallback};
     }
+
+    const lastCandle = await this.fetchLastCandle({coinraySymbol, resolution});
+    this._candles[candleId] = lastCandle || {time: 0};
     await this.subscribeTrades({coinraySymbol}, candleCallback);
 
     return callback
