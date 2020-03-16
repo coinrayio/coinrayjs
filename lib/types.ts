@@ -72,6 +72,12 @@ export enum OrderType {
   TAKE_PROFIT_MARKET = "TAKE_PROFIT_MARKET",
 }
 
+export declare enum OrderStatus {
+    OPEN = "open",
+    CLOSED = "closed",
+    CANCELED = "canceled"
+}
+
 export enum OrderSide {BUY = "buy", SELL = "sell"}
 
 export interface BaseParams {
