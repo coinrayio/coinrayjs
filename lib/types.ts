@@ -72,7 +72,7 @@ export enum OrderType {
   TAKE_PROFIT_MARKET = "TAKE_PROFIT_MARKET",
 }
 
-export declare enum OrderStatus {
+export enum OrderStatus {
     OPEN = "open",
     CLOSED = "closed",
     CANCELED = "canceled"
