@@ -65,6 +65,8 @@ export default class Coinray {
   private _nonceOffset: number;
   private tradesSubscribed: boolean = false;
   private orderBookSubscribed: boolean = false;
+  private _timeOffset: number;
+  private _timeOffsetInterval: any;
 
   constructor(token: string, {apiEndpoint, orderEndpoint, websocketEndpoint} =
       {
@@ -74,11 +76,15 @@ export default class Coinray {
       }) {
     this._token = token;
     this._nonceOffset = 0;
+    this._timeOffset = 0;
     this.config = {
       apiEndpoint: apiEndpoint || "https://coinray.io",
       orderEndpoint: orderEndpoint || apiEndpoint || "https://coinray.io",
       websocketEndpoint: websocketEndpoint || "wss://ws.coinray.io/v1"
-    }
+    };
+
+    this.loadTimeOffset().then();
+    this._timeOffsetInterval = setInterval(this.loadTimeOffset, 60 * 1000)
   }
 
   authenticateDevice = (credential: string, sessionKey: string) => {
@@ -90,6 +96,9 @@ export default class Coinray {
     this._tradeListeners = {};
     this._channels = {};
 
+    if (this._timeOffsetInterval) {
+      clearInterval(this._timeOffsetInterval)
+    }
     if (this._tokenCheckInterval) {
       clearInterval(this._tokenCheckInterval)
     }
@@ -130,7 +139,16 @@ export default class Coinray {
       this._nonceOffset = 0
     }
     this._nonceOffset += 1;
-    return Math.floor(new Date().getTime() / 1000) * 1000 + this._nonceOffset
+    return this.getTime() + this._nonceOffset
+  };
+
+  getTime = () => {
+    return Math.floor(new Date().getTime() / 1000) * 1000 + this._timeOffset;
+  };
+
+  loadTimeOffset = async () => {
+    const {result} = await this.get("/coinray/time");
+    this._timeOffset = result.time - new Date().getTime();
   };
 
   getToken = async () => {
