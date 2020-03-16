@@ -1,9 +1,8 @@
-import {JWS, JWE, JWK, util} from "node-jose";
+import {Jose} from "jose-jwe-jws";
 import {hmac} from "node-forge";
-import {camelCase} from "lodash"
+import _, {camelCase} from "lodash"
 import BigNumber from "bignumber.js";
 import {MarketMap, MarketQuery} from "./types";
-import _ from "lodash";
 
 export const MINUTES = 60;
 export const HOURS = 60 * MINUTES;
@@ -22,13 +21,17 @@ export function signHMAC(dataToSign, secret) {
 }
 
 export async function createJWT(payload: {}) {
-  const header = util.base64url.encode(JSON.stringify({typ: "JWT", alg: "none"}));
-  const body = util.base64url.encode(JSON.stringify(payload));
+  // @ts-ignore
+  const base64 = new Jose.Utils.Base64Url();
+  const header = base64.encode(JSON.stringify({typ: "JWT", alg: "none"}));
+  const body = base64.encode(JSON.stringify(payload));
   return [header, body, ""].join(".")
 }
 
-export async function encryptPayload(payload, jwk) {
-  return JWE.createEncrypt({compact: true}, {key: jwk}).final(payload, "utf8");
+export async function encryptPayload(payload, public_rsa_key) {
+  var cryptographer = new Jose.WebCryptographer();
+  var encrypter = new Jose.JoseJWE.Encrypter(cryptographer, public_rsa_key);
+  return await encrypter.encrypt(payload);
 }
 
 export function camelize(value) {
@@ -190,13 +193,13 @@ export function filterMarkets(markets: MarketMap, marketQuery: string | MarketQu
           if (keyword.match(/[-_:\/\\]+/)) {
             const currencyKeywords = keyword.split(/[-_:\/\\]+/);
             return market.baseCurrency.toLowerCase().includes(currencyKeywords[0]) && market.quoteCurrency.toLowerCase().includes(currencyKeywords[1]) ||
-              market.quoteCurrency.toLowerCase().includes(currencyKeywords[0]) && market.baseCurrency.toLowerCase().includes(currencyKeywords[1])
+                market.quoteCurrency.toLowerCase().includes(currencyKeywords[0]) && market.baseCurrency.toLowerCase().includes(currencyKeywords[1])
           }
 
           return ["exchangeCode", "baseCurrency", "quoteCurrency"].reduce((acc, key) => {
             const matchWithKey = key === "exchangeCode" ?
-              market[key].toLowerCase().substr(0, keyword.length) === keyword :
-              market[key].toLowerCase().includes(keyword)
+                market[key].toLowerCase().substr(0, keyword.length) === keyword :
+                market[key].toLowerCase().includes(keyword)
             return acc || matchWithKey
           }, false)
         } else if (marketProperty === "exchangeCode") {
