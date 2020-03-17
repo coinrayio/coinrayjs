@@ -110,7 +110,8 @@ export interface CancelOrderParams extends BaseParams {
 export interface BaseOrderParams {
   externalId?: string
   coinraySymbol: string
-  precisionAmount: number
+  precisionBase: number
+  precisionQuote: number
   precisionPrice: number
   minBase: BigNumber
   minQuote: BigNumber

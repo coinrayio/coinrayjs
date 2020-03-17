@@ -238,6 +238,7 @@ export default class LimitLadderOrder extends BaseOrder {
 
   getOrders(lockedOn = this.lockedOn): Array<LimitOrder> {
     const lockedOnAmount = lockedOn === "baseAmount" ? this.baseAmount : this.quoteAmount;
+    const precisionAmount = lockedOn === "baseAmount" ? this.precisionBase : this.precisionQuote;
 
     if (!(this.priceScales && this.priceScales.length > 0 && this.sizeScales.length > 0 && lockedOnAmount.gt(0))) {
       return []
@@ -250,7 +251,7 @@ export default class LimitLadderOrder extends BaseOrder {
 
     return _.times(this.numOrders, (index) => {
       const amount = {
-        [lockedOn]: lockedOnAmount.multipliedBy(sizeScales[index])
+        [lockedOn]: lockedOnAmount.multipliedBy(sizeScales[index]).decimalPlaces(precisionAmount > 0 ? precisionAmount : 0, BigNumber.ROUND_DOWN)
       };
 
       return new LimitOrder({

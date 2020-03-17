@@ -7,7 +7,8 @@ import UUID from "uuid/v4"
 export default abstract class BaseOrder {
   id = UUID();
   coinraySymbol: string;
-  precisionAmount: number;
+  precisionBase: number;
+  precisionQuote: number;
   precisionPrice: number;
   minBase: BigNumber;
   minQuote: BigNumber;
@@ -21,7 +22,8 @@ export default abstract class BaseOrder {
 
   constructor(params: BaseOrderParams) {
     this.coinraySymbol = params.coinraySymbol;
-    this.precisionAmount = safeInteger(params.precisionAmount);
+    this.precisionBase = safeInteger(params.precisionBase);
+    this.precisionQuote = safeInteger(params.precisionQuote);
     this.precisionPrice = safeInteger(params.precisionPrice);
     this.minBase = safeBigNumber(params.minBase);
     this.minQuote = safeBigNumber(params.minQuote);
