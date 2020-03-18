@@ -156,7 +156,7 @@ export default class LimitLadderOrder extends BaseOrder {
   }
 
   updatePrice(price: BigNumber) {
-    this.price = price;
+    this.price = price.decimalPlaces(this.precisionPrice);
     if (price && this.otherPrice.eq(0)) {
       this.otherPrice = price.multipliedBy(0.95).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice : 0)
     }
@@ -164,7 +164,7 @@ export default class LimitLadderOrder extends BaseOrder {
   }
 
   updateOtherPrice(otherPrice: BigNumber) {
-    this.otherPrice = otherPrice;
+    this.otherPrice = otherPrice.decimalPlaces(this.precisionPrice);
     if (otherPrice && this.price.eq(0)) {
       this.price = otherPrice.multipliedBy(1.05).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice : 0)
     }

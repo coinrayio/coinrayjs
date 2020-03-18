@@ -37,7 +37,7 @@ export default class StopLimitOrder extends LimitOrder {
   }
 
   updateOtherPrice(otherPrice: BigNumber) {
-    this.otherPrice = otherPrice;
+    this.otherPrice = otherPrice.decimalPlaces(this.precisionPrice);
     if (otherPrice && this.price.eq(0)) {
       this.price = otherPrice.multipliedBy(1.05).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice  : 0)
     }

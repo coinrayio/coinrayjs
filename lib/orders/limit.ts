@@ -84,7 +84,7 @@ export default class LimitOrder extends BaseOrder {
   }
 
   updatePrice(price: BigNumber) {
-    this.price = price;
+    this.price = price.decimalPlaces(this.precisionPrice);
 
     if (this.lockedOn === "baseAmount") {
       this.updateBaseAmount(this.baseAmount)
