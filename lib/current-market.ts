@@ -2,22 +2,26 @@ import CoinrayCache from "./coinray-cache";
 import EventEmitter from "./event-emitter";
 import Coinray from "./coinray";
 import _ from "lodash";
+import {OrderBookSide} from "./types";
+import BigNumber from "bignumber.js";
 
 export default class CurrentMarket extends EventEmitter {
   private coinrayCache: CoinrayCache;
   public coinraySymbol: string;
   private timeouts: {};
   private api: Coinray;
-  private orderBook: { asks: {}; bids: {} };
+  private orderBook: { minSeq: undefined | number, maxSeq: undefined | number, asks: {}; bids: {} };
   private trades: any[];
   private tradesStarted: boolean;
   private orderBookStarted: boolean;
+  private maxTrades: number;
 
-  constructor(api: Coinray, coinrayCache: CoinrayCache) {
+  constructor(api: Coinray, coinrayCache: CoinrayCache, options = {} as any) {
     super();
     this.api = api;
     this.coinrayCache = coinrayCache;
     this.timeouts = {};
+    this.maxTrades = options.maxTrades || 100;
     this.clear();
   }
 
@@ -41,12 +45,6 @@ export default class CurrentMarket extends EventEmitter {
   stop() {
     this.stopOrderBook();
     this.stopTrades();
-
-    this.trades = [];
-    this.orderBook = {
-      bids: {},
-      asks: {}
-    };
   }
 
   getMarket() {
@@ -138,6 +136,13 @@ export default class CurrentMarket extends EventEmitter {
     if (this.coinraySymbol) {
       this.api.unsubscribeOrderBook({coinraySymbol: this.coinraySymbol}, this.handleOrderBook);
     }
+    this.orderBook = {
+      minSeq: undefined,
+      maxSeq: undefined,
+      bids: {},
+      asks: {}
+    };
+
     this.orderBookStarted = false;
   };
 
@@ -146,32 +151,38 @@ export default class CurrentMarket extends EventEmitter {
       this.api.unsubscribeOrderBook({coinraySymbol}, this.handleOrderBook);
       return
     }
-    const {bids, asks} = orderBook;
+    const {minSeq, maxSeq, bids, asks} = orderBook;
 
-    const update = (side, updates) => {
-      updates.map(({price, quantity}) => {
+    const update = (side, updates: OrderBookSide) => {
+      _.forEach(updates, (quantity, price) => {
         if (quantity.gt(0)) {
-          side[price.toFixed(12)] = {price, quantity}
+          side[price] = {price: new BigNumber(price), quantity}
         } else {
-          delete side[price.toFixed(12)]
-        }
-      });
-    };
-
-    if (type === "orderBook:snapshot") {
-      this.orderBook.bids = _.keyBy(bids, ({price}) => price.toFixed(12));
-      this.orderBook.asks = _.keyBy(asks, ({price}) => price.toFixed(12));
-      this.dispatchEvent("orderBookUpdated", {type, coinraySymbol, orderBook: orderBook})
-    } else {
-      update(this.orderBook.bids, bids);
-      update(this.orderBook.asks, asks);
-      this.dispatchEvent("orderBookUpdated", {
-        type, coinraySymbol, orderBook: {
-          bids: Object.values(this.orderBook.bids).sort(({price: left}, {price: right}) => right.minus(left)),
-          asks: Object.values(this.orderBook.asks).sort(({price: left}, {price: right}) => left.minus(right)),
+          delete side[price]
         }
       })
+    };
+
+    if (minSeq - this.orderBook.maxSeq > 1) {
+      this.stopOrderBook();
+      this.startOrderBook();
+      return
     }
+
+    this.orderBook.minSeq = minSeq;
+    this.orderBook.maxSeq = maxSeq;
+
+    update(this.orderBook.bids, bids);
+    update(this.orderBook.asks, asks);
+
+    this.dispatchEvent("orderBookUpdated", {
+      type, coinraySymbol, orderBook: {
+        minSeq,
+        maxSeq,
+        bids: Object.values(this.orderBook.bids).sort(({price: left}, {price: right}) => right.minus(left)),
+        asks: Object.values(this.orderBook.asks).sort(({price: left}, {price: right}) => left.minus(right)),
+      }
+    })
   };
 
   unsubscribeOrderBook = (callback) => {
@@ -195,6 +206,7 @@ export default class CurrentMarket extends EventEmitter {
     if (this.coinraySymbol) {
       this.api.unsubscribeTrades({coinraySymbol: this.coinraySymbol}, this.handleTrades);
     }
+    this.trades = [];
     this.tradesStarted = false;
   };
 
@@ -203,7 +215,7 @@ export default class CurrentMarket extends EventEmitter {
       this.api.unsubscribeTrades({coinraySymbol}, this.handleTrades);
       return
     }
-    this.trades = [...trades, ...this.trades].slice(0, 100);
+    this.trades = [...trades, ...this.trades].slice(0, this.maxTrades);
 
     this.dispatchEvent('tradesUpdated', {type, coinraySymbol, trades: this.trades})
   };

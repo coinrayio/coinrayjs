@@ -36,15 +36,15 @@ export interface MarketQuery {
   marketProperty: string
 }
 
-export interface OrderBookEntry {
-  price: BigNumber,
-  quantity: BigNumber
+export interface OrderBookSide {
+  [key: string]: BigNumber
 }
 
 export interface OrderBook {
-  seq: number,
-  asks: OrderBookEntry[],
-  bids: OrderBookEntry[],
+  minSeq: number,
+  maxSeq: number,
+  asks: OrderBookSide,
+  bids: OrderBookSide,
 }
 
 export interface Trade {

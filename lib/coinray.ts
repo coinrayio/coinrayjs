@@ -12,7 +12,6 @@ import {
   CreateOrderParams,
   MarketParam,
   OrderBook,
-  OrderBookEntry,
   Trade,
   UpdateOrderParams,
 } from "./types";
@@ -292,7 +291,7 @@ export default class Coinray {
       const incoming_symbols = Object.keys(orderbooks);
       incoming_symbols.forEach(symbol => {
         const callbacks = Object.values(this._orderbookListeners[symbol]) as [];
-        const parsedOrderBook = Coinray._parseOrderBook(orderbooks[symbol]);
+        const parsedOrderBook = Coinray._parseOrderBookSnapshot(orderbooks[symbol]);
         callbacks.map((callback: (payload: any) => void) => callback({
           type: "orderBook:snapshot",
           coinraySymbol: symbol,
@@ -302,9 +301,13 @@ export default class Coinray {
     });
     channel.on("update", ({orderbooks}) => {
       const incoming_symbols = Object.keys(orderbooks);
+      if (incoming_symbols.length === 0) {
+        return
+      }
+
       incoming_symbols.forEach(symbol => {
         const callbacks = Object.values(this._orderbookListeners[symbol]) as [];
-        const parsedOrderBook = Coinray._parseOrderBook(orderbooks[symbol]);
+        const parsedOrderBook = Coinray._parseOrderBookUpdate(orderbooks[symbol]);
         callbacks.map((callback: (payload: any) => void) => callback({
           type: "orderBook:update",
           coinraySymbol: symbol,
@@ -451,7 +454,7 @@ export default class Coinray {
       }
     });
 
-    return Coinray._parseOrderBook({seq, asks, bids})
+    return Coinray._parseOrderBookSnapshot({seq, asks, bids});
   };
 
   createCredential = async (deviceId: string, password: string) => {
@@ -640,15 +643,35 @@ export default class Coinray {
     }
   }
 
-  private static _parseOrderBookEntry([price, quantity]: any): OrderBookEntry {
-    return {price: safeBigNumber(price), quantity: safeBigNumber(quantity)};
+  private static _parseOrderBookSnapshot({asks, bids, min_seq, max_seq}: any): OrderBook {
+    return {
+      minSeq: min_seq,
+      maxSeq: max_seq,
+      asks: Coinray._parseBidAsk(asks),
+      bids: Coinray._parseBidAsk(bids),
+    }
   }
 
-  private static _parseOrderBook({asks, bids, seq}: any): OrderBook {
+  private static _parseOrderBookUpdate({asks_diff, bids_diff, min_seq, max_seq}: any): OrderBook {
     return {
-      seq,
-      asks: asks.map(Coinray._parseOrderBookEntry) as OrderBookEntry[],
-      bids: bids.map(Coinray._parseOrderBookEntry) as OrderBookEntry[],
+      minSeq: min_seq,
+      maxSeq: max_seq,
+      asks: Coinray._parseBidAsk(asks_diff),
+      bids: Coinray._parseBidAsk(bids_diff),
+    }
+  }
+
+  private static _parseBidAsk(bidAsk) {
+    if (Array.isArray(bidAsk)) {
+      return bidAsk.reduce((acc, [price, quantity]) => {
+        acc[price] = new BigNumber(quantity);
+        return acc
+      }, {});
+    } else {
+      return Object.keys(bidAsk).reduce((acc, price) => {
+        acc[price] = new BigNumber(bidAsk[price]);
+        return acc
+      }, {});
     }
   }
 
