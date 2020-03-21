@@ -106,11 +106,20 @@ export default class Coinray {
   };
 
   checkToken = async () => {
-    if (jwtExpired(this._token) && this._onTokenExpired) {
+    if (jwtExpired(this._token)) {
+      console.log("Coinray token expired. Can refresh:", !!this._onTokenExpired);
+      if (!this._onTokenExpired) {
+        return false
+      }
       if (!this._refreshingToken) {
         this._refreshingToken = this._onTokenExpired();
       }
-      this._token = await this._refreshingToken;
+      try {
+        this._token = await this._refreshingToken;
+      } catch (error) {
+        console.log("Coinray token could not be refreshed", error);
+        return false
+      }
       this._refreshingToken = undefined;
       if (!jwtExpired(this._token)) {
         this.reconnect()
@@ -637,9 +646,14 @@ export default class Coinray {
         result = response.data
       }
       return {result: camelize(result), _headers: response.headers}
-    } catch ({response, request}) {
-      const {error} = response.data;
-      throw new CoinrayError(error)
+    } catch (error) {
+      const {response, request} = error;
+      if (response) {
+        const {error} = response.data;
+        throw new CoinrayError(error)
+      } else {
+        throw error
+      }
     }
   }
 
