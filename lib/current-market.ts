@@ -47,6 +47,10 @@ export default class CurrentMarket extends EventEmitter {
     this.stopTrades();
   }
 
+  getExchange() {
+    return this.coinrayCache.getExchange(this.getMarket().exchangeCode)
+  }
+
   getMarket() {
     if (this.coinraySymbol) {
       return this.coinrayCache.getMarket(this.coinraySymbol)

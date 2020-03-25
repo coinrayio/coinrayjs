@@ -606,7 +606,7 @@ export default class Coinray {
   private async _request(endpoint: string, method: Method, {apiEndpoint, version = "v2", headers = {}, params = {}, body = {}, secret = ""}) {
     const token = await this.getToken();
 
-    const paramString = Object.entries(params).length > 0 ? '?' + Object.entries(params).map(([key, val]) => `${key}=${val}`).join('&') : "";
+    const paramString = Object.entries(params).length > 0 ? '?' + Object.entries(params).map(([key, val]) => val ? `${key}=${val}` : undefined).filter(Boolean).join('&') : "";
     const nonce = this.getNonce();
     const requestUri = `/api/${version}/${endpoint}${paramString}`;
 
