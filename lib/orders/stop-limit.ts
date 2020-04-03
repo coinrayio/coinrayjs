@@ -5,18 +5,18 @@ import LimitOrder, {LimitOrderParams} from "./limit";
 import {safeBigNumber} from "../util";
 
 interface StopLimitOrderParams extends LimitOrderParams {
-  otherPrice: BigNumber
+  stopPrice: BigNumber
 }
 
 export default class StopLimitOrder extends LimitOrder {
-  otherPrice: BigNumber;
+  stopPrice: BigNumber;
   orderType = OrderType.STOP_LOSS_LIMIT;
 
   constraints() {
     const limitConstraints = super.constraints();
     return {
       ...limitConstraints,
-      otherPrice: {
+      stopPrice: {
         bigNumericality: {
           greaterThan: 0,
         }
@@ -26,20 +26,20 @@ export default class StopLimitOrder extends LimitOrder {
 
   constructor(params: StopLimitOrderParams) {
     super(params);
-    this.otherPrice = safeBigNumber(params.otherPrice)
+    this.stopPrice = safeBigNumber(params.stopPrice)
   }
 
   updatePrice(price: BigNumber) {
     super.updatePrice(price);
-    if (price && this.otherPrice.eq(0)) {
-      this.otherPrice = price.multipliedBy(0.95).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice  : 0)
+    if (price && this.stopPrice.eq(0)) {
+      this.stopPrice = price.multipliedBy(0.99).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice  : 0)
     }
   }
 
-  updateOtherPrice(otherPrice: BigNumber) {
-    this.otherPrice = otherPrice.decimalPlaces(this.precisionPrice);
-    if (otherPrice && this.price.eq(0)) {
-      this.price = otherPrice.multipliedBy(1.05).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice  : 0)
+  updateStopPrice(stopPrice: BigNumber) {
+    this.stopPrice = stopPrice.decimalPlaces(this.precisionPrice);
+    if (stopPrice && this.price.eq(0)) {
+      this.price = stopPrice.multipliedBy(1.01).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice  : 0)
     }
   }
 }

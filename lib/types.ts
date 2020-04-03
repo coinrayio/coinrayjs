@@ -65,6 +65,7 @@ export enum OrderType {
   LIMIT = "LIMIT",
   LIMIT_LADDER = "LIMIT_LADDER",
   STOP_LOSS = "STOP_LOSS",
+  OCO = "OCO",
   STOP_LOSS_LIMIT = "STOP_LOSS_LIMIT",
   STOP_LOSS_MARKET = "STOP_LOSS_MARKET",
   TAKE_PROFIT = "TAKE_PROFIT",
@@ -73,9 +74,9 @@ export enum OrderType {
 }
 
 export enum OrderStatus {
-    OPEN = "open",
-    CLOSED = "closed",
-    CANCELED = "canceled"
+  OPEN = "open",
+  CLOSED = "closed",
+  CANCELED = "canceled"
 }
 
 export enum OrderSide {BUY = "buy", SELL = "sell"}
