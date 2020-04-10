@@ -155,18 +155,20 @@ export default class LimitLadderOrder extends BaseOrder {
     this.numOrders = numOrders
   }
 
-  updatePrice(price: BigNumber) {
+  updatePrice(price: BigNumber, priceOffset = 0.05) {
     this.price = price.decimalPlaces(this.precisionPrice);
     if (price && this.otherPrice.eq(0)) {
-      this.otherPrice = price.multipliedBy(0.99).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice : 0)
+      const offset = this.side === OrderSide.BUY ? 1 + priceOffset : 1 - priceOffset;
+      this.otherPrice = price.multipliedBy(offset).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice : 0)
     }
     this.recalculate()
   }
 
-  updateOtherPrice(otherPrice: BigNumber) {
+  updateOtherPrice(otherPrice: BigNumber, priceOffset = 0.05) {
     this.otherPrice = otherPrice.decimalPlaces(this.precisionPrice);
     if (otherPrice && this.price.eq(0)) {
-      this.price = otherPrice.multipliedBy(1.01).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice : 0)
+      const offset = this.side === OrderSide.BUY ? 1 - priceOffset : 1 + priceOffset;
+      this.price = otherPrice.multipliedBy(offset).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice : 0)
     }
     this.recalculate()
   }
