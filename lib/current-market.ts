@@ -155,8 +155,17 @@ export default class CurrentMarket extends EventEmitter {
       this.api.unsubscribeOrderBook({coinraySymbol}, this.handleOrderBook);
       return
     }
-    const {minSeq, maxSeq, bids, asks} = orderBook;
 
+    if (type === "orderBook:snapshot") {
+      this.orderBook = {
+        minSeq: undefined,
+        maxSeq: undefined,
+        bids: {},
+        asks: {}
+      };
+    }
+
+    const {minSeq, maxSeq, bids, asks} = orderBook;
     const update = (side, updates: OrderBookSide) => {
       _.forEach(updates, (quantity, price) => {
         if (quantity.gt(0)) {
@@ -175,7 +184,6 @@ export default class CurrentMarket extends EventEmitter {
 
     this.orderBook.minSeq = minSeq;
     this.orderBook.maxSeq = maxSeq;
-
     update(this.orderBook.bids, bids);
     update(this.orderBook.asks, asks);
 
@@ -219,6 +227,11 @@ export default class CurrentMarket extends EventEmitter {
       this.api.unsubscribeTrades({coinraySymbol}, this.handleTrades);
       return
     }
+
+    if (type === "trades:snapshot") {
+      this.trades = [];
+    }
+
     this.trades = [...trades, ...this.trades].slice(0, this.maxTrades);
 
     this.dispatchEvent('tradesUpdated', {type, coinraySymbol, trades: this.trades})
