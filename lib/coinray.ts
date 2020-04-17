@@ -554,7 +554,7 @@ export default class Coinray {
   async publicKey() {
     if (!this._publicKey) {
       const {result: {jwk}} = await this.get("credentials/certificate");
-      this._publicKey = jwkToPublicKey(jwk)
+      this._publicKey = await jwkToPublicKey(jwk)
     }
     return this._publicKey
   }

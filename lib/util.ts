@@ -1,8 +1,11 @@
-import {Jose} from "jose-jwe-jws";
+import {Jose, setCrypto} from "jose-jwe-jws";
 import {hmac} from "node-forge";
 import _, {camelCase} from "lodash"
 import BigNumber from "bignumber.js";
 import {MarketMap, MarketQuery} from "./types";
+import crypto from "isomorphic-webcrypto"
+
+setCrypto(crypto);
 
 export const MINUTES = 60;
 export const HOURS = 60 * MINUTES;
