@@ -1,8 +1,15 @@
 import axios, {AxiosRequestConfig, Method} from "axios";
 import {Channel, Socket} from "phoenix";
-import {camelize, createJWT, encryptPayload, jwtExpired, safeBigNumber, safeTime, signHMAC} from "./util";
-
-import {Jose} from "jose-jwe-jws";
+import {
+  camelize,
+  createJWT,
+  encryptPayload,
+  jwkToPublicKey,
+  jwtExpired,
+  safeBigNumber,
+  safeTime,
+  signHMAC
+} from "./util";
 
 import {
   CancelOrderParams,
@@ -547,7 +554,7 @@ export default class Coinray {
   async publicKey() {
     if (!this._publicKey) {
       const {result: {jwk}} = await this.get("credentials/certificate");
-      this._publicKey = Jose.Utils.importRsaPublicKey(jwk, "RSA-OAEP");
+      this._publicKey = jwkToPublicKey(jwk)
     }
     return this._publicKey
   }

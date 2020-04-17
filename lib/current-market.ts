@@ -93,6 +93,10 @@ export default class CurrentMarket extends EventEmitter {
       case "trades:snapshot":
       case "trades:update": {
         const {trades} = rest;
+        if (trades.length === 0) {
+          break;
+        }
+
         const market = this.getMarket();
         const lastPrice = trades[0].price;
         if (!market.lastPrice.eq(lastPrice)) {
@@ -105,6 +109,10 @@ export default class CurrentMarket extends EventEmitter {
       case "orderBook:update": {
         const {orderBook: {bids, asks}} = rest;
         const market = this.getMarket();
+        if (bids.length === 0 || asks.length === 0) {
+          break;
+        }
+
         const askPrice = asks[0].price;
         const bidPrice = bids[0].price;
         if (!market.askPrice.eq(askPrice) || !market.bidPrice.eq(bidPrice)) {

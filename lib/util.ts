@@ -28,6 +28,10 @@ export async function createJWT(payload: {}) {
   return [header, body, ""].join(".")
 }
 
+export function jwkToPublicKey(jwk) {
+  return Jose.Utils.importRsaPublicKey(jwk, "RSA-OAEP");
+}
+
 export async function encryptPayload(payload, public_rsa_key) {
   var cryptographer = new Jose.WebCryptographer();
   var encrypter = new Jose.JoseJWE.Encrypter(cryptographer, public_rsa_key);
