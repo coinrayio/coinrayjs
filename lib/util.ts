@@ -1,11 +1,8 @@
-import {Jose, setCrypto} from "jose-jwe-jws";
 import {hmac} from "node-forge";
 import _, {camelCase} from "lodash"
 import BigNumber from "bignumber.js";
 import {MarketMap, MarketQuery} from "./types";
-import crypto from "isomorphic-webcrypto"
-
-setCrypto(crypto);
+import {crypto} from "./crypto";
 
 export const MINUTES = 60;
 export const HOURS = 60 * MINUTES;
@@ -23,22 +20,16 @@ export function signHMAC(dataToSign, secret) {
   return digest.digest().toHex();
 }
 
-export async function createJWT(payload: {}) {
-  // @ts-ignore
-  const base64 = new Jose.Utils.Base64Url();
-  const header = base64.encode(JSON.stringify({typ: "JWT", alg: "none"}));
-  const body = base64.encode(JSON.stringify(payload));
-  return [header, body, ""].join(".")
+export function createJWT(payload: {}) {
+  return crypto.createJWT(payload)
 }
 
 export function jwkToPublicKey(jwk) {
-  return Jose.Utils.importRsaPublicKey(jwk, "RSA-OAEP");
+  return crypto.jwkToPublicKey(jwk)
 }
 
-export async function encryptPayload(payload, public_rsa_key) {
-  var cryptographer = new Jose.WebCryptographer();
-  var encrypter = new Jose.JoseJWE.Encrypter(cryptographer, public_rsa_key);
-  return await encrypter.encrypt(payload);
+export function encryptPayload(payload, publicKey) {
+  return crypto.encryptPayload(payload, publicKey)
 }
 
 export function camelize(value) {

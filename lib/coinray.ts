@@ -639,7 +639,7 @@ export default class Coinray {
         "Cr-Client-version": VERSION,
         ...headers
       },
-      data: JSON.stringify(body)
+      data: method === "GET" ? undefined : JSON.stringify(body)
     } as AxiosRequestConfig;
 
     try {
