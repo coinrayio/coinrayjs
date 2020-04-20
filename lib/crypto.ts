@@ -19,7 +19,6 @@ try {
       return JWE.createEncrypt({compact: true}, {key: publicKey}).final(jwt, "utf8")
     }
   };
-  console.log("Using node-jose", crypto);
 } catch (e) {
   // Use jose-jwe-jwe if installed
   const {Jose} = require("jose-jwe-jws");
@@ -42,5 +41,4 @@ try {
       return encrypter.encrypt(jwt);
     }
   };
-  console.log("jose-jwe-jws", crypto);
 }
