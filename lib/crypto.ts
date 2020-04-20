@@ -7,7 +7,7 @@ try {
     createJWT: async (payload: {}) => {
       // @ts-ignore
       const header = util.base64url.encode(JSON.stringify({typ: "JWT", alg: "none"}));
-      const body = util.base64url.encode(JSON.stringify({test: ""}));
+      const body = util.base64url.encode(JSON.stringify(payload));
       return [header, body, ""].join(".")
     },
 
