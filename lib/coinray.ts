@@ -125,6 +125,7 @@ export default class Coinray {
         this._token = await this._refreshingToken;
       } catch (error) {
         console.log("Coinray token could not be refreshed", error);
+        this._refreshingToken = undefined;
         return false
       }
       this._refreshingToken = undefined;
