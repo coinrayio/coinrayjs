@@ -111,9 +111,9 @@ export default class Market {
     this.coinraySymbol = d.coinraySymbol;
     this.symbol = d.symbol;
     this.symbolAlt = d.symbolAlt;
-    this.quoteCurrency = d.quoteCurrency;
-    this.underlyingQuoteCurrency = d.underlyingQuoteCurrency;
-    this.baseCurrency = d.baseCurrency;
+    this.quoteCurrency = d.quoteCurrency.toUpperCase();
+    this.underlyingQuoteCurrency = d.underlyingQuoteCurrency.toUpperCase();
+    this.baseCurrency = d.baseCurrency.toUpperCase();
     this.exchangeCode = d.exchangeCode;
     this.volume = safeBigNumber(d.volume);
     this.quoteVolume = safeBigNumber(d.quoteVolume);
