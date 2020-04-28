@@ -62,13 +62,13 @@ export default class LimitOrder extends BaseOrder {
     }
   }
 
-  updateBaseAmount(baseAmount: BigNumber, setLockedOn = true) {
+  updateBaseAmount(baseAmount: BigNumber) {
     this.baseAmount = baseAmount;
     this.quoteAmount = this.price.multipliedBy(this.baseAmount).decimalPlaces(this.precisionQuote > 0 ? this.precisionQuote : 0, BigNumber.ROUND_DOWN);
     this.validate()
   }
 
-  updateQuoteAmount(quoteAmount: BigNumber, setLockedOn = true) {
+  updateQuoteAmount(quoteAmount: BigNumber) {
     this.quoteAmount = quoteAmount;
     this.baseAmount = quoteAmount.dividedBy(this.price).decimalPlaces(this.precisionBase > 0 ? this.precisionBase : 0, BigNumber.ROUND_DOWN );
     this.validate()

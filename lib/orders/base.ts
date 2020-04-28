@@ -44,6 +44,11 @@ export default abstract class BaseOrder {
     this.orderExternalId = orderExternalId
   }
 
+  resetError() {
+    this.errors = {};
+    this.isValid = true
+  }
+
   validate(): boolean {
     const errors = validate(this, this.constraints());
 
@@ -51,8 +56,7 @@ export default abstract class BaseOrder {
       this.errors = errors;
       this.isValid = false
     } else {
-      this.errors = {};
-      this.isValid = true
+      this.resetError()
     }
     return !errors
   }

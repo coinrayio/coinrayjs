@@ -224,7 +224,7 @@ export default class LimitLadderOrder extends BaseOrder {
     }
   }
 
-  updateBaseAmount(baseAmount: BigNumber, setLockedOn = false) {
+  updateBaseAmount(baseAmount: BigNumber) {
     this.baseAmount = baseAmount;
     this.numOrders = Math.max(2, +this.numOrders);
 
