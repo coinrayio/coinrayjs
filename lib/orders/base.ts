@@ -44,6 +44,9 @@ export default abstract class BaseOrder {
     this.orderExternalId = orderExternalId
   }
 
+  updateLockedOn(lockedOn: string) {
+  }
+
   resetError() {
     this.errors = {};
     this.isValid = true
