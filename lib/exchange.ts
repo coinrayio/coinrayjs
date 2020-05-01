@@ -14,7 +14,7 @@ import {
 import BigNumber from "bignumber.js";
 import Coinray from "./coinray";
 import {MarketMap, OrderType} from "./types";
-
+import _ from "lodash"
 
 export default class Exchange {
   public readonly api: Coinray;
@@ -105,11 +105,10 @@ export default class Exchange {
   async loadMarkets() {
     const markets = await this.api.fetchMarkets(this.code);
 
-    markets.reduce((mem, market) => {
-      mem[market.coinraySymbol] = market;
-      this.exchangeSymbols[market.symbol] = market;
-      return mem;
-    }, this.markets)
+    if (markets.length > 0) {
+      this.markets = _.keyBy(markets, "coinraySymbol");
+      this.exchangeSymbols = _.keyBy(markets, "symbol");
+    }
   }
 
   getMarketByExchangeSymbol(exchangeSymbol) {

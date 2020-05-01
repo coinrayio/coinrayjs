@@ -633,6 +633,7 @@ export default class Coinray {
     const options = {
       method,
       url: (apiEndpoint || this.config.apiEndpoint) + requestUri,
+      timeout: 20000,
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",
