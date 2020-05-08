@@ -22,6 +22,7 @@ export default class Exchange {
   public readonly name: string;
   public readonly code: string;
   public readonly websocket: boolean;
+  public readonly isFutures: boolean;
   public readonly logo: string;
   public readonly btcVolume: BigNumber;
   public readonly usdVolume: BigNumber;
@@ -44,6 +45,7 @@ export default class Exchange {
     checkString(d.name, false, "name");
     checkString(d.code, false, "code");
     checkBoolean(d.websocket, false, "websocket");
+    checkBoolean(d.isFutures, true, "isFutures");
     checkString(d.logo, false, "logo");
     checkString(d.btcVolume, false, "btcVolume");
     checkString(d.usdVolume, false, "usdVolume");
@@ -75,6 +77,7 @@ export default class Exchange {
     this.name = d.name;
     this.code = d.code;
     this.websocket = d.websocket;
+    this.isFutures = !!d.isFutures;
     this.logo = d.logo;
     this.btcVolume = safeBigNumber(d.btcVolume);
     this.usdVolume = safeBigNumber(d.usdVolume);
@@ -93,6 +96,7 @@ export default class Exchange {
       name: this.name,
       code: this.code,
       websocket: this.websocket,
+      isFutures: this.isFutures,
       logo: this.logo,
       btcVolume: this.btcVolume,
       usdVolume: this.usdVolume,

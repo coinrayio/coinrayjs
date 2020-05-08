@@ -552,6 +552,59 @@ export default class Coinray {
     }
   };
 
+  fetchPositions = async ({exchangeCode, encryptedApiKey}) => {
+    try {
+      const {result} = await this.get("futures/positions", {
+        secret: this._sessionKey,
+        apiEndpoint: this.config.orderEndpoint,
+        params: {
+          credential: this._credential,
+          exchangeCode,
+          encryptedApiKey
+        }
+      });
+      return result
+    } catch (error) {
+      throw error
+    }
+  };
+
+  setLeverage = async ({coinraySymbol, leverage, encryptedApiKey}) => {
+    try {
+      const {result} = await this.post("futures/leverage", {
+        secret: this._sessionKey,
+        apiEndpoint: this.config.orderEndpoint,
+        body: {
+          credential: this._credential,
+          coinraySymbol,
+          leverage,
+          encryptedApiKey
+        }
+      });
+      return result
+    } catch (error) {
+      throw error
+    }
+  };
+
+  setMarginType = async ({coinraySymbol, marginType, encryptedApiKey}) => {
+    try {
+      const {result} = await this.post("futures/margin_type", {
+        secret: this._sessionKey,
+        apiEndpoint: this.config.orderEndpoint,
+        body: {
+          credential: this._credential,
+          coinraySymbol,
+          marginType,
+          encryptedApiKey
+        }
+      });
+      return result
+    } catch (error) {
+      throw error
+    }
+  };
+
   async publicKey() {
     if (!this._publicKey) {
       const {result: {jwk}} = await this.get("credentials/certificate");
@@ -598,7 +651,7 @@ export default class Coinray {
     return channel
   }
 
-  get = async (endpoint: string, {apiEndpoint = undefined, version = "v2", headers = {}, params = {}} = {}) => await this._request(endpoint, "GET", {
+  get = async (endpoint: string, {apiEndpoint = undefined, version = "v2", headers = {}, params = {}, secret = ""} = {}) => await this._request(endpoint, "GET", {
     version,
     apiEndpoint,
     headers,

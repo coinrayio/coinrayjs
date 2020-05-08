@@ -73,6 +73,11 @@ export enum OrderType {
   TAKE_PROFIT_MARKET = "TAKE_PROFIT_MARKET",
 }
 
+export enum MarginType {
+  CROSSED = "CROSSED",
+  ISOLATED = "ISOLATED"
+}
+
 export enum OrderStatus {
   OPEN = "open",
   CLOSED = "closed",

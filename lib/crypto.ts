@@ -4,10 +4,13 @@ try {
   // Use node-jose if installed
   const {JWE, JWK, util} = require("node-jose");
   crypto = {
+    urlSafeBase64encode: (payload) => {
+      return util.base64url.encode(payload)
+    },
+
     createJWT: async (payload: {}) => {
-      // @ts-ignore
-      const header = util.base64url.encode(JSON.stringify({typ: "JWT", alg: "none"}));
-      const body = util.base64url.encode(JSON.stringify(payload));
+      const header = this.urlSafeBase64encode(JSON.stringify({typ: "JWT", alg: "none"}));
+      const body = this.urlSafeBase64encode(JSON.stringify(payload));
       return [header, body, ""].join(".")
     },
 
@@ -22,12 +25,15 @@ try {
 } catch (e) {
   // Use jose-jwe-jwe if installed
   const {Jose} = require("jose-jwe-jws");
+  const base64 = new Jose.Utils.Base64Url();
   crypto = {
+    urlSafeBase64encode: (payload) => {
+      return base64.encode(payload)
+    },
+
     createJWT: (payload: {}) => {
-      // @ts-ignore
-      const base64 = new Jose.Utils.Base64Url();
-      const header = base64.encode(JSON.stringify({typ: "JWT", alg: "none"}));
-      const body = base64.encode(JSON.stringify(payload));
+      const header = this.urlSafeBase64encode(JSON.stringify({typ: "JWT", alg: "none"}));
+      const body = this.urlSafeBase64encode(JSON.stringify(payload));
       return [header, body, ""].join(".")
     },
 
