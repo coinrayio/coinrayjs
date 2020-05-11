@@ -15,6 +15,13 @@ export class KeyError extends Error {
   }
 }
 
+export class MarketNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MarketNotFoundError"
+  }
+}
+
 
 export class ExchangeError extends Error {
   constructor(message: string) {

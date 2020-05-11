@@ -4,6 +4,7 @@ import Coinray from "./coinray";
 import _ from "lodash";
 import {OrderBookSide} from "./types";
 import BigNumber from "bignumber.js";
+import {MarketNotFoundError} from "./errors";
 
 export default class CurrentMarket extends EventEmitter {
   private coinrayCache: CoinrayCache;
@@ -55,7 +56,7 @@ export default class CurrentMarket extends EventEmitter {
     if (this.coinraySymbol) {
       return this.coinrayCache.getMarket(this.coinraySymbol)
     } else {
-      throw "CoinraySymbol not loaded"
+      throw new MarketNotFoundError(`Market not found: ${this.coinraySymbol}`)
     }
   }
 
