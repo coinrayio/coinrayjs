@@ -1,5 +1,5 @@
 import validate from "./validate"
-import {BaseOrderParams, MarketBalance, OrderSide} from "../types";
+import {BalanceLimit, BaseOrderParams, MarketBalance, OrderSide} from "../types";
 import BigNumber from "bignumber.js";
 import {safeBigNumber, safeInteger} from "../util";
 import UUID from "uuid/v4"
@@ -15,6 +15,7 @@ export default abstract class BaseOrder {
   makerFee: BigNumber;
   takerFee: BigNumber;
   balances: MarketBalance;
+  balanceLimit: BalanceLimit;
   side: OrderSide;
   errors: any;
   isValid: boolean;
@@ -30,6 +31,7 @@ export default abstract class BaseOrder {
     this.makerFee = safeBigNumber(params.makerFee);
     this.takerFee = safeBigNumber(params.takerFee);
     this.balances = params.balances;
+    this.balanceLimit = params.balanceLimit || BalanceLimit.NONE;
     this.side = params.side;
     this.orderExternalId = params.externalId;
     this.errors = {};

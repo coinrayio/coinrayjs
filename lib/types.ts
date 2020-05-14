@@ -86,6 +86,8 @@ export enum OrderStatus {
 
 export enum OrderSide {BUY = "buy", SELL = "sell"}
 
+export enum BalanceLimit {QUOTE = "quote", BASE = "base", NONE = "none"}
+
 export interface BaseParams {
   encryptedApiKey: string,
   coinraySymbol: string,
@@ -125,6 +127,7 @@ export interface BaseOrderParams {
   takerFee: BigNumber
   side: OrderSide
   balances: MarketBalance
+  balanceLimit?: BalanceLimit
 }
 
 export interface Balance {

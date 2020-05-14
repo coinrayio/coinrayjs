@@ -1,5 +1,5 @@
 import BaseOrder from "./base";
-import {BaseOrderParams, OrderSide, OrderType} from "../types";
+import {BalanceLimit, BaseOrderParams, OrderSide, OrderType} from "../types";
 import BigNumber from "bignumber.js";
 import {safeBigNumber} from "../util";
 
@@ -15,15 +15,16 @@ export default class LimitOrder extends BaseOrder {
   quoteAmount: BigNumber;
   price: BigNumber;
   lockedOn: string;
+  balanceLimit: BalanceLimit;
 
   orderType = OrderType.LIMIT;
 
   constraints() {
     let maxBase = undefined;
     let maxQuote = undefined;
-    if (this.side === OrderSide.BUY) {
+    if (this.balanceLimit === BalanceLimit.QUOTE) {
       maxQuote = this.balances.quote || 0
-    } else {
+    } else if (this.balanceLimit === BalanceLimit.BASE) {
       maxBase = this.balances.base || 0
     }
 

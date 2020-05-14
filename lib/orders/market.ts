@@ -1,5 +1,5 @@
 import BaseOrder from "./base";
-import {BaseOrderParams, OrderSide, OrderType} from "../types";
+import {BalanceLimit, BaseOrderParams, OrderType} from "../types";
 import BigNumber from "bignumber.js";
 
 
@@ -15,18 +15,26 @@ export default class MarketOrder extends BaseOrder {
 
   constraints = () => {
     let maxBase = undefined;
-    if (this.side === OrderSide.SELL) {
-      maxBase = this.balances.base;
-      return {
-        baseAmount: {
-          bigNumericality: {
-            greaterThanOrEqualTo: this.minBase.toNumber(),
-            lessThanOrEqualTo: maxBase ? maxBase.toNumber() : undefined,
-          }
+    let maxQuote = undefined;
+    if (this.balanceLimit === BalanceLimit.QUOTE) {
+      maxQuote = this.balances.quote || 0
+    } else if (this.balanceLimit === BalanceLimit.BASE) {
+      maxBase = this.balances.base || 0
+    }
+
+    return {
+      baseAmount: {
+        bigNumericality: {
+          greaterThanOrEqualTo: this.minBase.toNumber(),
+          lessThanOrEqualTo: maxBase ? maxBase.toNumber() : undefined,
         }
-      }
-    } else {
-      return {}
+      },
+      quoteAmount: {
+        bigNumericality: {
+          greaterThanOrEqualTo: this.minQuote.toNumber(),
+          lessThanOrEqualTo: maxQuote ? maxQuote.toNumber() : undefined,
+        }
+      },
     }
   };
 
