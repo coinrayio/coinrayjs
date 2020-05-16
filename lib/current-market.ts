@@ -23,7 +23,7 @@ export default class CurrentMarket extends EventEmitter {
     this.coinrayCache = coinrayCache;
     this.timeouts = {};
     this.maxTrades = options.maxTrades || 100;
-    this.clear();
+    this.destroy();
   }
 
   setCoinraySymbol(coinraySymbol: string) {
@@ -37,7 +37,7 @@ export default class CurrentMarket extends EventEmitter {
     this.dispatchEvent('coinraySymbolChanged', {coinraySymbol});
   }
 
-  clear() {
+  destroy() {
     this.coinraySymbol = null;
     this.removeAllListeners();
     this.stop();
