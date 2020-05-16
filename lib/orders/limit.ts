@@ -49,17 +49,19 @@ export default class LimitOrder extends BaseOrder {
     }
   }
 
-  constructor(params: LimitOrderParams) {
+  constructor(params: LimitOrderParams, updateAmounts = true) {
     super(params);
     this.price = safeBigNumber(params.price || "0");
     this.lockedOn = params.lockedOn;
     this.baseAmount = safeBigNumber(params.baseAmount);
     this.quoteAmount = safeBigNumber(params.quoteAmount);
 
-    if (this.quoteAmount.gt(0) && this.lockedOn === "quoteAmount") {
-      this.updateQuoteAmount(this.quoteAmount)
-    } else {
-      this.updateBaseAmount(this.baseAmount)
+    if (updateAmounts) {
+      if (this.quoteAmount.gt(0) && this.lockedOn === "quoteAmount") {
+        this.updateQuoteAmount(this.quoteAmount)
+      } else {
+        this.updateBaseAmount(this.baseAmount)
+      }
     }
   }
 

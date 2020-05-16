@@ -1,7 +1,7 @@
 import {OrderSide, OrderType} from "../types";
 import BigNumber from "bignumber.js";
 import LimitOrder, {LimitOrderParams} from "./limit";
-import {safeBigNumber, safeFloat} from "../util";
+import {safeBigNumber} from "../util";
 
 interface OcoOrderParams extends LimitOrderParams {
   linkedOrderId: string,
@@ -33,9 +33,29 @@ export default class OcoOrder extends LimitOrder {
   }
 
   constructor(params: OcoOrderParams) {
-    super(params);
+    super(params, false);
     this.otherPrice = safeBigNumber(params.otherPrice);
     this.stopPrice = safeBigNumber(params.stopPrice);
+
+    if (this.quoteAmount.gt(0) && this.lockedOn === "quoteAmount") {
+      this.updateQuoteAmount(this.quoteAmount)
+    } else {
+      this.updateBaseAmount(this.baseAmount)
+    }
+  }
+
+  updateQuoteAmount(quoteAmount: BigNumber) {
+    this.quoteAmount = quoteAmount;
+    let basePrice = this.side === OrderSide.BUY ? this.otherPrice : this.price;
+    this.baseAmount = quoteAmount.dividedBy(basePrice).decimalPlaces(this.precisionBase > 0 ? this.precisionBase : 0, BigNumber.ROUND_DOWN);
+    this.validate()
+  }
+
+  updateBaseAmount(baseAmount: BigNumber) {
+    this.baseAmount = baseAmount;
+    let basePrice = this.side === OrderSide.BUY ? this.otherPrice : this.price;
+    this.quoteAmount = basePrice.multipliedBy(this.baseAmount).decimalPlaces(this.precisionQuote > 0 ? this.precisionQuote : 0, BigNumber.ROUND_DOWN);
+    this.validate()
   }
 
   updatePrice(price: BigNumber, priceOffset = 0.05) {
@@ -63,7 +83,7 @@ export default class OcoOrder extends LimitOrder {
   updateStopPrice(stopPrice: BigNumber, priceOffset = 0.05) {
     this.stopPrice = stopPrice.decimalPlaces(this.precisionPrice);
     if (stopPrice && this.price.eq(0)) {
-      const offset = this.side === OrderSide.BUY ? 1 - priceOffset : 1 + priceOffset ;
+      const offset = this.side === OrderSide.BUY ? 1 - priceOffset : 1 + priceOffset;
       const otherOffset = this.side === OrderSide.BUY ? 1 + priceOffset : 1 - priceOffset;
 
       this.price = stopPrice.multipliedBy(offset).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice : 0);
