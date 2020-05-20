@@ -104,13 +104,17 @@ export default class LimitLadderOrder extends BaseOrder {
       baseAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minBase.toNumber(),
+          notGreaterThanOrEqualTo: `^Can't be less than ${this.minBase.toNumber()}`,
           lessThanOrEqualTo: maxBase ? maxBase.toNumber() : undefined,
+          notLessThanOrEqualTo: `^Can't be more than ${maxBase?.toNumber()}`,
         }
       },
       quoteAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minQuote.toNumber(),
+          notGreaterThanOrEqualTo: `^Can't be less than ${this.minQuote.toNumber()}`,
           lessThanOrEqualTo: maxQuote ? maxQuote.toNumber() : undefined,
+          notLessThanOrEqualTo: `^Can't be more than ${maxQuote?.toNumber()}`,
         }
       },
       price: {

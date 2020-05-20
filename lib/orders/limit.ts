@@ -1,5 +1,5 @@
 import BaseOrder from "./base";
-import {BalanceLimit, BaseOrderParams, OrderSide, OrderType} from "../types";
+import {BalanceLimit, BaseOrderParams, OrderType} from "../types";
 import BigNumber from "bignumber.js";
 import {safeBigNumber} from "../util";
 
@@ -32,13 +32,17 @@ export default class LimitOrder extends BaseOrder {
       baseAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minBase.toNumber(),
+          notGreaterThanOrEqualTo: `^Can't be less than ${this.minBase.toNumber()}`,
           lessThanOrEqualTo: maxBase ? maxBase.toNumber() : undefined,
+          notLessThanOrEqualTo: `^Can't be more than ${maxBase?.toNumber()}`,
         }
       },
       quoteAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minQuote.toNumber(),
+          notGreaterThanOrEqualTo: `^Can't be less than ${this.minQuote.toNumber()}`,
           lessThanOrEqualTo: maxQuote ? maxQuote.toNumber() : undefined,
+          notLessThanOrEqualTo: `^Can't be more than ${maxQuote?.toNumber()}`,
         }
       },
       price: {
@@ -73,7 +77,7 @@ export default class LimitOrder extends BaseOrder {
 
   updateQuoteAmount(quoteAmount: BigNumber) {
     this.quoteAmount = quoteAmount;
-    this.baseAmount = quoteAmount.dividedBy(this.price).decimalPlaces(this.precisionBase > 0 ? this.precisionBase : 0, BigNumber.ROUND_DOWN );
+    this.baseAmount = quoteAmount.dividedBy(this.price).decimalPlaces(this.precisionBase > 0 ? this.precisionBase : 0, BigNumber.ROUND_DOWN);
     this.validate()
   }
 
