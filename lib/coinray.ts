@@ -57,6 +57,7 @@ export default class Coinray {
   private _transport: any;
 
   private _tradeListeners: any = {};
+  private _tradeSnapshots: any = {};
   private _orderbookListeners: any = {};
 
   private _candleTradeListeners: any = {};
@@ -239,8 +240,15 @@ export default class Coinray {
   subscribeTrades = async ({coinraySymbol}: MarketParam, callback: (payload: any) => void) => {
     if (this._tradeListeners[coinraySymbol] && this._tradeListeners[coinraySymbol].length > 0) {
       this._tradeListeners[coinraySymbol].push(callback);
+
+      callback({
+        type: "trades:snapshot",
+        coinraySymbol: coinraySymbol,
+        trades: this._tradeSnapshots[coinraySymbol]
+      })
       return callback
     }
+    this._tradeSnapshots[coinraySymbol] = []
     this._tradeListeners[coinraySymbol] = [callback];
 
     await this.connect();
@@ -255,6 +263,8 @@ export default class Coinray {
     channel.on("snapshot", ({symbol, trades}) => {
       const callbacks = Object.values(this._tradeListeners[symbol]) as [];
       const parsedTrades = trades.map(Coinray._parseTrade);
+      this._tradeSnapshots[symbol] = parsedTrades
+
       callbacks.map((callback: (payload: any) => void) => callback({
         type: "trades:snapshot",
         coinraySymbol: symbol,
@@ -264,6 +274,7 @@ export default class Coinray {
     channel.on("update", ({symbol, trades}) => {
       const callbacks = Object.values(this._tradeListeners[symbol]) as [];
       const parsedTrades = trades.map(Coinray._parseTrade);
+      this._tradeSnapshots[symbol] = [...parsedTrades, ...this._tradeSnapshots[symbol]].slice(0, 100);
       callbacks.map((callback: (payload: any) => void) => callback({
         type: "trades:update",
         coinraySymbol: symbol,
@@ -284,6 +295,7 @@ export default class Coinray {
             .push("unsubscribe", {symbols: coinraySymbol}, 5000)
       }
     } else {
+      this._tradeSnapshots[coinraySymbol] = []
       this._tradeListeners[coinraySymbol] = []
     }
   };
@@ -359,7 +371,7 @@ export default class Coinray {
     }
     this._candleListeners[candleId] = [callback];
 
-    const candleCallback = ({coinraySymbol, trades}: any) => {
+    const candleCallback = ({type, coinraySymbol, trades}: any) => {
       const callbacks = Object.values(this._candleListeners[candleId]) as [];
       const lastCandle = Coinray._tradesToLastCandle(resolution, trades);
 
@@ -380,8 +392,7 @@ export default class Coinray {
       this._candleTradeListeners[coinraySymbol] = {[candleId]: candleCallback};
     }
 
-    const lastCandle = await this.fetchLastCandle({coinraySymbol, resolution});
-    this._candles[candleId] = lastCandle || {time: 0};
+    this._candles[candleId] = {time: 0};
     await this.subscribeTrades({coinraySymbol}, candleCallback);
 
     return callback
@@ -398,6 +409,7 @@ export default class Coinray {
 
     if (this._candleListeners[candleId].length === 0) {
       this.unsubscribeTrades({coinraySymbol}, this._candleTradeListeners[coinraySymbol][candleId]);
+      delete this._candles[candleId];
       delete this._candleTradeListeners[coinraySymbol][candleId];
     }
   };
@@ -797,7 +809,7 @@ export default class Coinray {
 
     open = low = high = close = first.price;
 
-    currentCandleTrades.map(({price, quantity}: Trade) => {
+    currentCandleTrades.reverse().map(({price, quantity}: Trade) => {
       low = BigNumber.min(low, price);
       high = BigNumber.max(high, price);
       close = price;
