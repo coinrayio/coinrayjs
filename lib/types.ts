@@ -132,9 +132,15 @@ export interface BaseOrderParams {
 
 export interface Balance {
   currency: string,
-  available: number,
-  in_orders: number,
-  total: number
+  available: BigNumber,
+  inOrders: BigNumber,
+  total: BigNumber,
+  initialMargin?: BigNumber
+  openOrderInitialMargin?: BigNumber
+  positionInitialMargin?: BigNumber
+  unrealizedProfit?: BigNumber
+  crossWalletBalance?: BigNumber
+  crossUnrealizedProfit?: BigNumber
 }
 
 export interface MarketBalance {

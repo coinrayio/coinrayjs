@@ -12,6 +12,7 @@ import {
 } from "./util";
 
 import {
+  Balance,
   CancelOrderParams,
   Candle,
   CandleParam,
@@ -581,6 +582,23 @@ export default class Coinray {
     }
   };
 
+  getBalances = async ({exchangeCode, encryptedApiKey}) => {
+    try {
+      const {result: {balances, positions}} = await this.get("account/balances", {
+        secret: this._sessionKey,
+        apiEndpoint: this.config.orderEndpoint,
+        params: {
+          credential: this._credential,
+          exchangeCode,
+          encryptedApiKey
+        }
+      });
+      return {balances: balances.map(Coinray._parseBalance), positions}
+    } catch (error) {
+      throw error
+    }
+  };
+
   setLeverage = async ({coinraySymbol, leverage, encryptedApiKey}) => {
     try {
       const {result} = await this.post("futures/leverage", {
@@ -667,6 +685,7 @@ export default class Coinray {
     version,
     apiEndpoint,
     headers,
+    secret,
     params
   });
 
@@ -684,7 +703,7 @@ export default class Coinray {
     const requestUri = `/api/${version}/${endpoint}${paramString}`;
 
     if (version === "v2") {
-      const dataToSign = [nonce, method.toUpperCase(), requestUri, JSON.stringify(body)].join("");
+      const dataToSign = [nonce, method.toUpperCase(), requestUri, method === "GET" ? "" : JSON.stringify(body)].join("");
       const signature = signHMAC(dataToSign, secret);
 
       headers = {
@@ -788,6 +807,30 @@ export default class Coinray {
       quantity: safeBigNumber(quantity),
       type: ['1', 'buy'].includes(isBuy.toString()) ? "buy" : "sell"
     }
+  }
+
+  private static _parseBalance(balance): Balance {
+    let newBalance = {
+      currency: balance.currency,
+      available: safeBigNumber(balance.available),
+      inOrders: safeBigNumber(balance.inOrders),
+      total: safeBigNumber(balance.inOrders),
+    }
+
+    if (balance.initialMargin) {
+      newBalance = {
+        ...newBalance,
+        ...{
+          initialMargin: safeBigNumber(balance.initialMargin),
+          openOrderInitialMargin: safeBigNumber(balance.openOrderInitialMargin),
+          positionInitialMargin: safeBigNumber(balance.positionInitialMargin),
+          unrealizedProfit: safeBigNumber(balance.unrealizedProfit),
+          crossWalletBalance: safeBigNumber(balance.crossWalletBalance),
+          crossUnrealizedProfit: safeBigNumber(balance.crossUnrealizedProfit),
+        }
+      }
+    }
+    return newBalance
   }
 
   private static _tradesToLastCandle(resolution: string, trades: Trade[]): Candle {
