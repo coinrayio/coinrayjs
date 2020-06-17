@@ -92,7 +92,11 @@ export default class CoinrayCache extends EventEmitter {
   }
 
   getMarket = (coinraySymbol: string) => {
-    const exchange = this.getExchange(coinraySymbol.split("_")[0]);
+    const parts = `${coinraySymbol}`.split("_")
+    if (parts.length < 3) {
+      return
+    }
+    const exchange = this.getExchange(parts[0]);
     if (exchange) {
       return exchange.getMarket(coinraySymbol)
     }
