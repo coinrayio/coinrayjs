@@ -440,7 +440,9 @@ export default class Coinray {
     });
 
     if (result.length > 0) {
-      return Coinray._parseCandle(result[0])
+      const candle = Coinray._parseCandle(result[0])
+      candle.skipVolume = true // Mark the candle to skip adding the volume on the first run
+      return candle
     }
   };
 
@@ -880,8 +882,12 @@ export default class Coinray {
     currentCandle.high = BigNumber.max(currentCandle.high, candle.high);
     currentCandle.low = BigNumber.min(currentCandle.low, candle.low);
     currentCandle.close = candle.close;
-    currentCandle.baseVolume = currentCandle.baseVolume.plus(candle.baseVolume);
-    currentCandle.quoteVolume = currentCandle.quoteVolume.plus(candle.quoteVolume);
+    if (!currentCandle.skipVolume) {
+      currentCandle.skipVolume = false
+    } else {
+      currentCandle.baseVolume = currentCandle.baseVolume.plus(candle.baseVolume);
+      currentCandle.quoteVolume = currentCandle.quoteVolume.plus(candle.quoteVolume);
+    }
 
     return currentCandle
   }
