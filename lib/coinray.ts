@@ -393,7 +393,8 @@ export default class Coinray {
       this._candleTradeListeners[coinraySymbol] = {[candleId]: candleCallback};
     }
 
-    this._candles[candleId] = {time: 0};
+    const lastCandle = await this.fetchLastCandle({coinraySymbol, resolution});
+    this._candles[candleId] = lastCandle || {time: 0};
     await this.subscribeTrades({coinraySymbol}, candleCallback);
 
     return callback
