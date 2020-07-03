@@ -882,7 +882,7 @@ export default class Coinray {
     currentCandle.high = BigNumber.max(currentCandle.high, candle.high);
     currentCandle.low = BigNumber.min(currentCandle.low, candle.low);
     currentCandle.close = candle.close;
-    if (!currentCandle.skipVolume) {
+    if (currentCandle.skipVolume) {
       currentCandle.skipVolume = false
     } else {
       currentCandle.baseVolume = currentCandle.baseVolume.plus(candle.baseVolume);
