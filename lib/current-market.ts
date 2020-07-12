@@ -208,6 +208,9 @@ export default class CurrentMarket extends EventEmitter {
 
   unsubscribeOrderBook = (callback) => {
     this.off('orderBookUpdated', callback)
+    if (!this.hasListeners('orderBookUpdated')) {
+      this.stopOrderBook();
+    }
   };
 
   subscribeTrades = (callback) => {
@@ -248,5 +251,8 @@ export default class CurrentMarket extends EventEmitter {
 
   unsubscribeTrades = (callback) => {
     this.off('tradesUpdated', callback)
+    if (!this.hasListeners('tradesUpdated')) {
+      this.stopTrades();
+    }
   };
 }
