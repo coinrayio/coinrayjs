@@ -20,12 +20,14 @@ import {
   CreateOrderParams,
   MarketParam,
   OrderBook,
+  OrderBookSide,
   Trade,
   UpdateOrderParams,
 } from "./types";
 import Market from "./market";
 import Exchange from "./exchange";
 import BigNumber from "bignumber.js";
+import _ from "lodash";
 
 const VERSION = require('../package.json').version;
 
@@ -60,6 +62,7 @@ export default class Coinray {
   private _tradeListeners: any = {};
   private _tradeSnapshots: any = {};
   private _orderbookListeners: any = {};
+  private _orderbookSnapshots: any = {};
 
   private _candleTradeListeners: any = {};
   private _candleListeners: any = {};
@@ -304,8 +307,15 @@ export default class Coinray {
   subscribeOrderBook = async ({coinraySymbol}: MarketParam, callback: (payload: any) => void) => {
     if (this._orderbookListeners[coinraySymbol] && this._orderbookListeners[coinraySymbol].length > 0) {
       this._orderbookListeners[coinraySymbol].push(callback);
+
+      callback({
+        type: "orderBook:snapshot",
+        coinraySymbol: coinraySymbol,
+        orderBook: this._orderbookSnapshots[coinraySymbol]
+      })
       return callback
     }
+    this._orderbookSnapshots[coinraySymbol] = {minSeq: 0, maxSeq: 0, bids: {}, asks: {}};
     this._orderbookListeners[coinraySymbol] = [callback];
 
     await this.connect();
@@ -322,6 +332,7 @@ export default class Coinray {
       incoming_symbols.forEach(symbol => {
         const callbacks = Object.values(this._orderbookListeners[symbol]) as [];
         const parsedOrderBook = Coinray._parseOrderBookSnapshot(orderbooks[symbol]);
+        this._orderbookSnapshots[symbol] = parsedOrderBook
         callbacks.map((callback: (payload: any) => void) => callback({
           type: "orderBook:snapshot",
           coinraySymbol: symbol,
@@ -338,6 +349,9 @@ export default class Coinray {
       incoming_symbols.forEach(symbol => {
         const callbacks = Object.values(this._orderbookListeners[symbol]) as [];
         const parsedOrderBook = Coinray._parseOrderBookUpdate(orderbooks[symbol]);
+
+        this._orderbookSnapshots[symbol] = Coinray._updateOrderBook(this._orderbookSnapshots[symbol], parsedOrderBook);
+
         callbacks.map((callback: (payload: any) => void) => callback({
           type: "orderBook:update",
           coinraySymbol: symbol,
@@ -359,6 +373,7 @@ export default class Coinray {
             .push("unsubscribe", {symbols: coinraySymbol}, 5000)
       }
     } else {
+      this._orderbookSnapshots[coinraySymbol] = {minSeq: 0, maxSeq: 0, bids: {}, asks: {}}
       this._orderbookListeners[coinraySymbol] = []
     }
   };
@@ -769,6 +784,25 @@ export default class Coinray {
       asks: Coinray._parseBidAsk(asks_diff),
       bids: Coinray._parseBidAsk(bids_diff),
     }
+  }
+
+  private static _updateOrderBook(orderBook, {asks, bids, min_seq, max_seq}: any) {
+    const update = (side, updates: OrderBookSide) => {
+      _.forEach(updates, (quantity, price) => {
+        if (quantity.gt(0)) {
+          side[price] = quantity
+        } else {
+          delete side[price]
+        }
+      })
+    };
+
+    orderBook.minSeq = min_seq
+    orderBook.maxSeq = max_seq
+    update(orderBook.bids, bids);
+    update(orderBook.asks, asks);
+
+    return orderBook
   }
 
   private static _parseBidAsk(bidAsk) {
