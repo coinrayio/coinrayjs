@@ -583,6 +583,19 @@ export default class Coinray {
     }
   };
 
+  createWebSocketToken = async ({exchangeCode, encryptedApiKey}) => {
+    try {
+      const {result} = await this.post("exchanges/ws_token", {
+        secret: this._sessionKey,
+        apiEndpoint: this.config.orderEndpoint,
+        body: {encryptedApiKey, exchangeCode, credential: this._credential}
+      });
+      return result
+    } catch (error) {
+      throw error
+    }
+  };
+
   fetchPositions = async ({exchangeCode, encryptedApiKey}) => {
     try {
       const {result} = await this.get("futures/positions", {
