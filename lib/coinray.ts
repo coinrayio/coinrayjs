@@ -52,6 +52,7 @@ export default class Coinray {
   private _token: string;
   private _sessionKey: string;
   private _credential: string;
+  private _firstOpen: boolean;
   private _onTokenExpired?: () => Promise<string>;
   private _tokenCheckInterval: any;
   private _onError?: (event: any) => void;
@@ -89,6 +90,7 @@ export default class Coinray {
     this._token = token;
     this._nonceOffset = 0;
     this._timeOffset = 0;
+    this._firstOpen = true;
     this.config = {
       apiEndpoint: apiEndpoint || "https://coinray.io",
       orderEndpoint: orderEndpoint || apiEndpoint || "https://coinray.io",
@@ -186,14 +188,6 @@ export default class Coinray {
     if (this._connected) {
       // @ts-ignore
       this.socket.conn.close();
-      Object.keys(this._tradeListeners).forEach((coinraySymbol) => {
-        const channel = this.getChannel("trades");
-        channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
-      });
-      Object.keys(this._orderbookListeners).forEach((coinraySymbol) => {
-        const channel = this.getChannel("orderbooks");
-        channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
-      });
     }
   };
 
@@ -240,6 +234,22 @@ export default class Coinray {
   onError = (callback: (event: any) => void) => {
     this._onError = callback
   };
+
+  resubscribe = () => {
+    if (this._firstOpen) {
+      this._firstOpen = false
+      return
+    }
+
+    Object.keys(this._tradeListeners).forEach((coinraySymbol) => {
+      const channel = this.getChannel("trades");
+      channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
+    });
+    Object.keys(this._orderbookListeners).forEach((coinraySymbol) => {
+      const channel = this.getChannel("orderbooks");
+      channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
+    });
+  }
 
   subscribeTrades = async ({coinraySymbol}: MarketParam, callback: (payload: any) => void) => {
     if (this._tradeListeners[coinraySymbol] && this._tradeListeners[coinraySymbol].length > 0) {
@@ -682,6 +692,7 @@ export default class Coinray {
 
     if (!this._socket) {
       this._socket = new Socket(this.config.websocketEndpoint, {
+        heartbeatIntervalMs: 5000,
         transport: this._transport,
         reconnectAfterMs: (tries) => {
           if (jwtExpired(this._token)) {
@@ -691,7 +702,9 @@ export default class Coinray {
           }
         }
       });
+      this.onOpen(this.resubscribe)
     }
+
     // @ts-ignore
     this._socket.params = () => ({reconnect: true, token: this._token, client: "coinrayjs", version: VERSION});
     return this._socket
