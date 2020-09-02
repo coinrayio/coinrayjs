@@ -256,14 +256,18 @@ export default class LimitLadderOrder extends BaseOrder {
 
     const diff = this.otherPrice.minus(this.price);
 
+    let amountRemaining = lockedOnAmount
     return _.times(this.numOrders, (index) => {
-      const amount = {
-        [lockedOn]: lockedOnAmount.multipliedBy(sizeScales[index]).decimalPlaces(precisionAmount > 0 ? precisionAmount : 0, BigNumber.ROUND_DOWN)
-      };
+      let amount = lockedOnAmount.multipliedBy(sizeScales[index]).decimalPlaces(precisionAmount > 0 ? precisionAmount : 0, BigNumber.ROUND_DOWN)
+      amountRemaining = amountRemaining.minus(amount)
+
+      if (index === this.numOrders - 1) {
+        amount = amount.plus(amountRemaining)
+      }
 
       return new LimitOrder({
         ...this,
-        ...amount,
+        [lockedOn]: amount,
         lockedOn,
         price: this.price.plus(diff.multipliedBy(priceScales[index])).decimalPlaces(this.precisionPrice > 0 ? this.precisionPrice : 0),
       })
