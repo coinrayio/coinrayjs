@@ -1,8 +1,9 @@
-import {hmac} from "node-forge";
+import {hmac, md} from "node-forge";
 import _, {camelCase} from "lodash"
 import BigNumber from "bignumber.js";
 import {MarketMap, MarketQuery} from "./types";
 import {crypto} from "./crypto";
+import {base64url} from "rfc4648";
 
 export const MINUTES = 60;
 export const HOURS = 60 * MINUTES;
@@ -13,15 +14,44 @@ export function unix() {
   return new Date().getTime() / 1000
 }
 
-export function signHMAC(dataToSign, secret) {
-  const digest = hmac.create();
-  digest.start("sha256", secret);
-  digest.update(dataToSign);
+export function strToArray(str) {
+  return str.split('').map((char) => char.charCodeAt(0))
+}
+
+export function base64UrlEncode(str) {
+  return base64url.stringify(strToArray(str), {pad: false})
+}
+
+export function base64UrlDecode(str) {
+  return String.fromCharCode.apply(null, base64url.parse(str, {loose: true}))
+}
+
+export function sha256hexdigest(str) {
+  const digest = md.sha256.create();
+  digest.update(str);
   return digest.digest().toHex();
 }
 
-export function createJWT(payload: {}) {
-  return crypto.createJWT(payload)
+export function signHMAC(dataToSign, secret, format = "hex") {
+  const digest = hmac.create();
+  digest.start("sha256", secret);
+  digest.update(dataToSign);
+  const result = digest.digest()
+
+  switch (format) {
+    case "base64url":
+      return base64UrlEncode(result.data)
+    default:
+      return result.toHex()
+  }
+}
+
+export function createJWT(payload: {}, secret = undefined) {
+  return crypto.createJWT(payload, secret)
+}
+
+export function parseJWT(jwt) {
+  return crypto.parseJWT(jwt)
 }
 
 export function jwkToPublicKey(jwk) {

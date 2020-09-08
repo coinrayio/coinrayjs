@@ -94,6 +94,17 @@ export interface BaseParams {
   coinraySymbol: string,
 }
 
+export interface SmartOrderParams {
+  credential: string,
+  coinraySymbol?: String
+  type?: OrderType,
+  side?: OrderSide,
+  quantity?: BigNumber,
+  price?: BigNumber,
+  stopPrice?: BigNumber,
+  allowParams?: string[],
+}
+
 export interface CreateOrderParams extends BaseParams {
   type: OrderType,
   side: OrderSide,

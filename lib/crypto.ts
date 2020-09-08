@@ -1,22 +1,11 @@
+import {base64UrlDecode, base64UrlEncode, sha256hexdigest, signHMAC} from "./util";
+
 export let crypto;
 
 try {
   // Use node-jose if installed
-  const {JWE, JWK, util} = require("node-jose");
-
-  const urlSafeBase64encode = (payload) => {
-    return util.base64url.encode(payload)
-  }
-
+  const {JWE, JWK} = require("node-jose");
   crypto = {
-    urlSafeBase64encode,
-
-    createJWT: async (payload: {}) => {
-      const header = urlSafeBase64encode(JSON.stringify({typ: "JWT", alg: "none"}));
-      const body = urlSafeBase64encode(JSON.stringify(payload));
-      return [header, body, ""].join(".")
-    },
-
     jwkToPublicKey: (jwk) => {
       return JWK.asKey(jwk);
     },
@@ -28,21 +17,8 @@ try {
 } catch (e) {
   // Use jose-jwe-jwe if installed
   const {Jose} = require("jose-jwe-jws");
-  const base64 = new Jose.Utils.Base64Url();
-
-  const urlSafeBase64encode = (payload) => {
-    return base64.encode(payload)
-  }
 
   crypto = {
-    urlSafeBase64encode,
-
-    createJWT: (payload: {}) => {
-      const header = urlSafeBase64encode(JSON.stringify({typ: "JWT", alg: "none"}));
-      const body = urlSafeBase64encode(JSON.stringify(payload));
-      return [header, body, ""].join(".")
-    },
-
     jwkToPublicKey: (jwk) => {
       return Jose.Utils.importRsaPublicKey(jwk, "RSA-OAEP");
     },
@@ -53,4 +29,27 @@ try {
       return encrypter.encrypt(jwt);
     }
   };
+}
+
+crypto.createJWT = async (payload: {}, secret = undefined) => {
+  const body = base64UrlEncode(JSON.stringify(payload));
+
+  let signature, header = ""
+  if (secret) {
+    header = base64UrlEncode(JSON.stringify({"typ": "JWT", "kid": sha256hexdigest(secret), "alg": "HS256"}));
+    const dataToSign = [header, body].join(".")
+    signature = signHMAC(dataToSign, secret, "base64url")
+  } else {
+    header = base64UrlEncode(JSON.stringify({"typ": "JWT", "alg": "none"}));
+  }
+
+  return [header, body, signature].join(".")
+}
+
+crypto.parseJWT = (jwt) => {
+  const [headerString, bodyString, signature] = jwt.split(".")
+  const header = JSON.parse(base64UrlDecode(headerString));
+  const body = JSON.parse(base64UrlDecode(bodyString));
+
+  return {header, body, signature}
 }

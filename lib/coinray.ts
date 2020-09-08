@@ -6,6 +6,7 @@ import {
   encryptPayload,
   jwkToPublicKey,
   jwtExpired,
+  parseJWT,
   safeBigNumber,
   safeTime,
   signHMAC
@@ -21,6 +22,7 @@ import {
   MarketParam,
   OrderBook,
   OrderBookSide,
+  SmartOrderParams,
   Trade,
   UpdateOrderParams,
 } from "./types";
@@ -554,6 +556,35 @@ export default class Coinray {
     }
   };
 
+  createSmartOrderSignature = async (smartOrder: SmartOrderParams) => {
+    try {
+      const {result} = await this.post("order/smart_order_signature", {
+        secret: this._sessionKey,
+        apiEndpoint: this.config.orderEndpoint,
+        body: {smartOrder, credential: this._credential}
+      });
+      return result
+    } catch (error) {
+      throw error
+    }
+
+
+    // const secret = this._sessionKey
+    // return createJWT({
+    //   action: '/api/v2/orders',
+    //   method: ["POST", "DELETE"],
+    //   credential: this._credential,
+    //   client_id: this.clientId,
+    //   type: order.type,
+    //   side: order.side,
+    //   coinray_symbol: order.coinraySymbol,
+    //   quantity: order.quantity,
+    //   price: order.price,
+    //   stop_price: order.stopPrice,
+    //   allow_params: order.allowParams
+    // }, secret)
+  }
+
   createOrder = async (order: CreateOrderParams) => {
     try {
       const {result} = await this.post("order", {
@@ -682,6 +713,10 @@ export default class Coinray {
       this._publicKey = await jwkToPublicKey(jwk)
     }
     return this._publicKey
+  }
+
+  get clientId(): string {
+    return parseJWT(this._token).header.kid
   }
 
 
