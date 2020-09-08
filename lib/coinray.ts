@@ -567,22 +567,6 @@ export default class Coinray {
     } catch (error) {
       throw error
     }
-
-
-    // const secret = this._sessionKey
-    // return createJWT({
-    //   action: '/api/v2/orders',
-    //   method: ["POST", "DELETE"],
-    //   credential: this._credential,
-    //   client_id: this.clientId,
-    //   type: order.type,
-    //   side: order.side,
-    //   coinray_symbol: order.coinraySymbol,
-    //   quantity: order.quantity,
-    //   price: order.price,
-    //   stop_price: order.stopPrice,
-    //   allow_params: order.allowParams
-    // }, secret)
   }
 
   createOrder = async (order: CreateOrderParams) => {
