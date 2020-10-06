@@ -30,6 +30,7 @@ import Market from "./market";
 import Exchange from "./exchange";
 import BigNumber from "bignumber.js";
 import _ from "lodash";
+import I18n from "./i18n";
 
 const VERSION = require('../package.json').version;
 
@@ -46,6 +47,8 @@ export class CoinrayError extends Error {
 }
 
 export default class Coinray {
+  static I18n = I18n
+
   config: {
     apiEndpoint: string;
     orderEndpoint: string;
@@ -101,6 +104,7 @@ export default class Coinray {
 
     this.loadTimeOffset().then();
     this._timeOffsetInterval = setInterval(this.loadTimeOffset, 60 * 1000)
+    console.log(Coinray.I18n.t("testkey"))
   }
 
   authenticateDevice = (credential: string, sessionKey: string) => {
