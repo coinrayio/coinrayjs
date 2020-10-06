@@ -104,7 +104,6 @@ export default class Coinray {
 
     this.loadTimeOffset().then();
     this._timeOffsetInterval = setInterval(this.loadTimeOffset, 60 * 1000)
-    console.log(Coinray.I18n.t("testkey"))
   }
 
   authenticateDevice = (credential: string, sessionKey: string) => {

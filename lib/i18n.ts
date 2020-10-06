@@ -6,9 +6,9 @@ export default class I18n {
     console.log(`Coinray I18n initialized`)
   }
 
-  static t = (key) => {
+  static t = (key, params?) => {
     if (instance) {
-      return instance.t(`coinray:${key}`)
+      return instance.t(`coinray:${key}`, params)
     } else {
       return `i18n uninitialized. Set the Coinray.I18n.instance. Key: ${key}`
     }

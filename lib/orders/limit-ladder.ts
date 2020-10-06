@@ -4,6 +4,7 @@ import LimitOrder, {LimitOrderParams} from "./limit";
 import _ from "lodash"
 import {safeBigNumber, safeInteger} from "../util";
 import BaseOrder from "./base";
+import Coinray from "../coinray";
 
 export enum PriceScales {
   LINEAR = "LINEAR",
@@ -104,17 +105,17 @@ export default class LimitLadderOrder extends BaseOrder {
       baseAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minBase.toNumber(),
-          notGreaterThanOrEqualTo: `^Can't be less than ${this.minBase.toFixed(this.precisionBase)}`,
+          notGreaterThanOrEqualTo: `^${Coinray.I18n.t("validation.notGreaterThanOrEqualTo", {min: this.minBase.toFixed(this.precisionBase)})}`,
           lessThanOrEqualTo: maxBase ? maxBase.toNumber() : undefined,
-          notLessThanOrEqualTo: `^Insufficient funds`,
+          notLessThanOrEqualTo: `^${Coinray.I18n.t("validation.insufficientFunds")}`,
         }
       },
       quoteAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minQuote.toNumber(),
-          notGreaterThanOrEqualTo: `^Can't be less than ${this.minQuote.toFixed(this.precisionQuote)}`,
+          notGreaterThanOrEqualTo: `^${Coinray.I18n.t("validation.notGreaterThanOrEqualTo", {min: this.minQuote.toFixed(this.precisionQuote)})}`,
           lessThanOrEqualTo: maxQuote ? maxQuote.toNumber() : undefined,
-          notLessThanOrEqualTo: `^Insufficient funds`,
+          notLessThanOrEqualTo: `^${Coinray.I18n.t("validation.insufficientFunds")}`,
         }
       },
       price: {
