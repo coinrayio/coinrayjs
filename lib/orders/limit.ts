@@ -32,7 +32,7 @@ export default class LimitOrder extends BaseOrder {
       baseAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minBase.toNumber(),
-          notGreaterThanOrEqualTo: `^Can't be less than ${this.minBase.toNumber()}`,
+          notGreaterThanOrEqualTo: `^Can't be less than ${this.minBase.toFixed(this.precisionBase)}`,
           lessThanOrEqualTo: maxBase ? maxBase.toNumber() : undefined,
           notLessThanOrEqualTo: `^Insufficient funds`,
         }
@@ -40,7 +40,7 @@ export default class LimitOrder extends BaseOrder {
       quoteAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minQuote.toNumber(),
-          notGreaterThanOrEqualTo: `^Can't be less than ${this.minQuote.toNumber()}`,
+          notGreaterThanOrEqualTo: `^Can't be less than ${this.minQuote.toFixed(this.precisionQuote)}`,
           lessThanOrEqualTo: maxQuote ? maxQuote.toNumber() : undefined,
           notLessThanOrEqualTo: `^Insufficient funds`,
         }
