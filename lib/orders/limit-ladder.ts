@@ -2,7 +2,7 @@ import {BalanceLimit, OrderSide, OrderType} from "../types";
 import BigNumber from "bignumber.js";
 import LimitOrder, {LimitOrderParams} from "./limit";
 import _ from "lodash"
-import {safeBigNumber, safeInteger} from "../util";
+import {correctNumberPrecision, safeBigNumber, safeInteger} from "../util";
 import BaseOrder from "./base";
 import Coinray from "../coinray";
 
@@ -105,7 +105,7 @@ export default class LimitLadderOrder extends BaseOrder {
       baseAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minBase.toNumber(),
-          notGreaterThanOrEqualTo: `^${Coinray.I18n.t("validation.notGreaterThanOrEqualTo", {min: this.minBase.toFixed(this.precisionBase)})}`,
+          notGreaterThanOrEqualTo: `^${Coinray.I18n.t("validation.notGreaterThanOrEqualTo", {min: correctNumberPrecision(this.precisionBase, this.minBase)})}`,
           lessThanOrEqualTo: maxBase ? maxBase.toNumber() : undefined,
           notLessThanOrEqualTo: `^${Coinray.I18n.t("validation.insufficientFunds")}`,
         }
@@ -113,7 +113,7 @@ export default class LimitLadderOrder extends BaseOrder {
       quoteAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: this.minQuote.toNumber(),
-          notGreaterThanOrEqualTo: `^${Coinray.I18n.t("validation.notGreaterThanOrEqualTo", {min: this.minQuote.toFixed(this.precisionQuote)})}`,
+          notGreaterThanOrEqualTo: `^${Coinray.I18n.t("validation.notGreaterThanOrEqualTo", {min: correctNumberPrecision(this.precisionQuote, this.minQuote)})}`,
           lessThanOrEqualTo: maxQuote ? maxQuote.toNumber() : undefined,
           notLessThanOrEqualTo: `^${Coinray.I18n.t("validation.insufficientFunds")}`,
         }

@@ -168,6 +168,10 @@ export function safeBigNumber(d: string | number | BigNumber): BigNumber {
   return new BigNumber(d)
 }
 
+export function correctNumberPrecision (precision, value) {
+  return new BigNumber(value).toFixed(precision > 0 ? precision : 0)
+}
+
 export function safeFloat(d: string | number): number {
   if (typeof (d) === 'number') {
     return d
