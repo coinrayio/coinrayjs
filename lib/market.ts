@@ -48,6 +48,8 @@ export default class Market {
   public readonly exchangeUrl: string;
   public readonly baseToUsd: BigNumber;
   public readonly quoteToUsd: BigNumber;
+  public readonly status: string;
+  public readonly note: string;
   public lastPrice?: BigNumber;
   public askPrice: BigNumber;
   public bidPrice: BigNumber;
@@ -69,6 +71,8 @@ export default class Market {
     checkString(d.underlyingQuoteCurrency, false, "underlyingQuoteCurrency");
     checkString(d.baseCurrency, false, "baseCurrency");
     checkString(d.exchangeCode, false, "exchangeCode");
+    checkString(d.status || "", false, "status");
+    checkString(d.note || "", false, "note");
     checkBigNumber(d.volume, true, "volume");
     checkBigNumber(d.quoteVolume, true, "quoteVolume");
     checkBigNumber(d.btcVolume, true, "btcVolume");
@@ -115,6 +119,8 @@ export default class Market {
     this.underlyingQuoteCurrency = d.underlyingQuoteCurrency.toUpperCase();
     this.baseCurrency = d.baseCurrency.toUpperCase();
     this.exchangeCode = d.exchangeCode;
+    this.status = d.status;
+    this.note = d.note;
     this.volume = safeBigNumber(d.volume);
     this.quoteVolume = safeBigNumber(d.quoteVolume);
     this.btcVolume = safeBigNumber(d.btcVolume);

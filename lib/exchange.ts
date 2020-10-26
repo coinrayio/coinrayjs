@@ -30,6 +30,7 @@ export default class Exchange {
   public readonly quoteCurrencies: string[] | null;
   public readonly supportedResolutions: string[] | null;
   public readonly supportedOrderTypes: OrderType[] | null;
+  public readonly baseCurrencyDominance: object | null;
   public markets: MarketMap;
   public exchangeSymbols: {};
 
@@ -85,6 +86,7 @@ export default class Exchange {
     this.quoteCurrencies = d.quoteCurrencies;
     this.supportedResolutions = d.supportedResolutions;
     this.supportedOrderTypes = d.supportedOrderTypes;
+    this.baseCurrencyDominance = d.baseCurrencyDominance;
     this.markets = {};
     this.exchangeSymbols = {}
   }
@@ -103,6 +105,7 @@ export default class Exchange {
       totalMarkets: this.totalMarkets,
       quoteCurrencies: this.quoteCurrencies,
       supportedResolutions: this.supportedResolutions,
+      baseCurrencyDominance: this.baseCurrencyDominance,
     }, this.api)
   }
 
@@ -113,6 +116,10 @@ export default class Exchange {
       this.markets = _.keyBy(markets, "coinraySymbol");
       this.exchangeSymbols = _.keyBy(markets, "symbol");
     }
+  }
+
+  getBaseCurrencyDominance(baseCurrency) {
+    return this.baseCurrencyDominance[baseCurrency]
   }
 
   getMarketByExchangeSymbol(exchangeSymbol) {
