@@ -26,6 +26,7 @@ export interface CandlesParam {
   resolution: string,
   start?: number,
   end?: number
+  useWebSocket?: boolean,
 }
 
 export interface MarketMap {

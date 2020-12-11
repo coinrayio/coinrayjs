@@ -404,7 +404,8 @@ export default class Coinray {
 
     const candleCallback = ({type, coinraySymbol, trades}: any) => {
       const callbacks = Object.values(this._candleListeners[candleId]) as [];
-      const lastCandle = Coinray._tradesToLastCandle(resolution, trades);
+      const lastCandles = Coinray._tradesToLastCandle(resolution, trades);
+      const lastCandle = lastCandles[0]
 
       if (lastCandle) {
         this._candles[candleId] = Coinray._mergeCandle(this._candles[candleId], lastCandle);
@@ -412,7 +413,8 @@ export default class Coinray {
         callbacks.map((callback: (payload: any) => void) => callback({
           coinraySymbol,
           resolution,
-          candle: this._candles[candleId]
+          candle: this._candles[candleId],
+          previousCandles: lastCandles
         }))
       }
     };
@@ -446,8 +448,12 @@ export default class Coinray {
     }
   };
 
-  fetchCandles = async ({coinraySymbol, resolution, start, end}: CandlesParam): Promise<Candle[]> => {
-    const {result} = await this.get("candles", {
+  fetchCandles = async ({coinraySymbol, resolution, start, end, useWebSocket}: CandlesParam): Promise<Candle[]> => {
+    const minDate = new Date()
+    minDate.setMinutes(minDate.getMinutes() - 5)
+    let indexedSnapshot = {}
+
+    const candlePromise = this.get("candles", {
       version: "v1",
       params: {
         symbol: coinraySymbol,
@@ -457,7 +463,28 @@ export default class Coinray {
       }
     });
 
-    return result.map(Coinray._parseCandle);
+    // Fetch data from the websocket snapshot to merge the highs and lows
+    if (useWebSocket && end > minDate.getTime()) {
+      const subscribe = new Promise(resolve => {
+        const onSnapshot = ({previousCandles}) => {
+          this.unsubscribeCandles({coinraySymbol, resolution}, onSnapshot)
+          resolve(previousCandles)
+        }
+        this.subscribeCandles({coinraySymbol, resolution}, onSnapshot)
+      })
+      const snapshot = await subscribe as Candle[]
+      indexedSnapshot = _.keyBy(snapshot, ({time}) => time.getTime())
+    }
+    const {result} = await candlePromise
+
+    return result.map(Coinray._parseCandle).map((candle) => {
+      const snapshotCandle = indexedSnapshot[candle.time.getTime()]
+      if (snapshotCandle) {
+        return Coinray._mergeCandle(candle, snapshotCandle)
+      } else {
+        return candle
+      }
+    });
   };
 
   fetchLastCandle = async ({coinraySymbol, resolution}: CandleParam): Promise<Candle | undefined> => {
@@ -918,42 +945,45 @@ export default class Coinray {
     return newBalance
   }
 
-  private static _tradesToLastCandle(resolution: string, trades: Trade[]): Candle {
+  private static _tradesToLastCandle(resolution: string, trades: Trade[]): Candle[] {
     const seconds = Coinray._resolutionToSeconds(resolution);
 
-    const currentTime = new Date().getTime();
-    const startDate = new Date(currentTime - (currentTime % seconds));
+    const groupedTrades = _.groupBy(trades, ({time}) => new Date(Math.floor(time.getTime() / seconds) * seconds))
+    return Object.values(groupedTrades).map((currentCandleTrades) => {
+      const currentTime = currentCandleTrades[0].time.getTime()
+      const startDate = new Date(currentTime - (currentTime % seconds));
 
-    const currentCandleTrades = trades.filter((trade) => trade.time >= startDate);
+      // const currentCandleTrades = trades.filter((trade) => trade.time >= startDate);
 
-    if (currentCandleTrades.length === 0) {
-      return undefined
-    }
+      if (currentCandleTrades.length === 0) {
+        return undefined
+      }
 
-    let first = currentCandleTrades[0];
-    let open, low, high, close;
-    let baseVolume = new BigNumber(0);
-    let quoteVolume = new BigNumber(0);
+      let first = currentCandleTrades[0];
+      let open, low, high, close;
+      let baseVolume = new BigNumber(0);
+      let quoteVolume = new BigNumber(0);
 
-    open = low = high = close = first.price;
+      open = low = high = close = first.price;
 
-    currentCandleTrades.reverse().map(({price, quantity}: Trade) => {
-      low = BigNumber.min(low, price);
-      high = BigNumber.max(high, price);
-      close = price;
-      baseVolume = baseVolume.plus(quantity);
-      quoteVolume = quoteVolume.plus(quantity.multipliedBy(price));
-    });
+      currentCandleTrades.reverse().map(({price, quantity}: Trade) => {
+        low = BigNumber.min(low, price);
+        high = BigNumber.max(high, price);
+        close = price;
+        baseVolume = baseVolume.plus(quantity);
+        quoteVolume = quoteVolume.plus(quantity.multipliedBy(price));
+      });
 
-    return {
-      time: new Date(startDate),
-      open,
-      high,
-      low,
-      close,
-      baseVolume,
-      quoteVolume,
-    }
+      return {
+        time: new Date(startDate),
+        open,
+        high,
+        low,
+        close,
+        baseVolume,
+        quoteVolume,
+      }
+    })
   };
 
   private static _mergeCandle(currentCandle: Candle, candle: Candle): Candle {
