@@ -267,6 +267,8 @@ export default class Coinray {
       })
       return callback
     }
+
+    // Run only once per coinraySymbol
     this._tradeSnapshots[coinraySymbol] = []
     this._tradeListeners[coinraySymbol] = [callback];
 
@@ -293,7 +295,17 @@ export default class Coinray {
     channel.on("update", ({symbol, trades}) => {
       const callbacks = Object.values(this._tradeListeners[symbol]) as [];
       const parsedTrades = trades.map(Coinray._parseTrade);
-      this._tradeSnapshots[symbol] = [...parsedTrades, ...this._tradeSnapshots[symbol]].slice(0, 100);
+      const snapshot = [...parsedTrades, ...this._tradeSnapshots[symbol]]
+      const minTime = new Date(new Date().getTime() - 120000)
+
+      const relevantSnapshot = snapshot.filter(({time}) => time > minTime)
+
+      if (relevantSnapshot.length > 100) {
+        this._tradeSnapshots[symbol] = relevantSnapshot
+      } else {
+        this._tradeSnapshots[symbol] = snapshot.slice(0, 100)
+      }
+
       callbacks.map((callback: (payload: any) => void) => callback({
         type: "trades:update",
         coinraySymbol: symbol,
