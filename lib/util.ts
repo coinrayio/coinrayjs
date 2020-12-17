@@ -88,7 +88,7 @@ export function jwtExpired(token: string) {
   }
 
   try {
-    let jwt = JSON.parse(atob(token.split(".")[1]));
+    let jwt = JSON.parse(base64UrlDecode(token.split(".")[1]));
     return jwt.exp < unix()
   } catch (error) {
     return true
@@ -168,7 +168,7 @@ export function safeBigNumber(d: string | number | BigNumber): BigNumber {
   return new BigNumber(d)
 }
 
-export function correctNumberPrecision (precision, value) {
+export function correctNumberPrecision(precision, value) {
   return new BigNumber(value).toFixed(precision > 0 ? precision : 0)
 }
 
@@ -219,17 +219,24 @@ export function filterMarkets(markets: MarketMap, marketQuery: string | MarketQu
   let filteredMarkets = markets;
 
   queries.forEach(({query, marketProperty}) => {
+    let matcher
+    if (query.match(/[-_:\/\\]+/)) {
+      try {
+        matcher = new RegExp(query.replace(/\*/g, ".*"), "i");
+      } catch(error) {
+        // Do nothing
+      }
+    }
     const keywords = query.toLowerCase().split(/[\s]+/).filter(Boolean);
     filteredMarkets = _.pickBy(filteredMarkets, (market, key) => {
       const matchTo = market[marketProperty].toLowerCase();
+
+      if (matcher) {
+        return !!matcher.exec(market.fullDisplayName)
+      }
+
       return keywords.filter((keyword) => {
         if (marketProperty === "coinraySymbol") {
-          if (keyword.match(/[-_:\/\\]+/)) {
-            const currencyKeywords = keyword.split(/[-_:\/\\]+/);
-            return market.baseCurrency.toLowerCase().includes(currencyKeywords[0]) && market.quoteCurrency.toLowerCase().includes(currencyKeywords[1]) ||
-                market.quoteCurrency.toLowerCase().includes(currencyKeywords[0]) && market.baseCurrency.toLowerCase().includes(currencyKeywords[1])
-          }
-
           return ["exchangeCode", "baseCurrency", "quoteCurrency"].reduce((acc, key) => {
             const matchWithKey = key === "exchangeCode" ?
                 market[key].toLowerCase().substr(0, keyword.length) === keyword :

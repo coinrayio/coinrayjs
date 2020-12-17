@@ -150,6 +150,14 @@ export default class Market {
     this.updatedAt = d.updatedAt;
   }
 
+  get fullDisplayName() {
+    return [this.exchangeCode, this.displayName].join(": ")
+  }
+
+  get displayName() {
+    return [this.baseCurrency, this.quoteCurrency].join("/")
+  }
+
   updateTicker = ({lastPrice, bidPrice, askPrice}: any) => {
     if (lastPrice) {
       this.lastPrice = lastPrice

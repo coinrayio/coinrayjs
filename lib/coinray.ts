@@ -88,9 +88,9 @@ export default class Coinray {
 
   constructor(token: string, {apiEndpoint, orderEndpoint, websocketEndpoint} =
       {
-        apiEndpoint: "https://coinray.io",
-        orderEndpoint: "https://coinray.io",
-        websocketEndpoint: "wss://ws.coinray.io/v1",
+        apiEndpoint: "https://api.coinray.eu",
+        orderEndpoint: "https://api.coinray.eu",
+        websocketEndpoint: "wss://ws.coinray.eu/v1",
       }) {
     this._token = token;
     this._nonceOffset = 0;
