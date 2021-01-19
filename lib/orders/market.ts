@@ -1,6 +1,8 @@
 import BaseOrder from "./base";
 import {BalanceLimit, BaseOrderParams, OrderType} from "../types";
 import BigNumber from "bignumber.js";
+import Coinray from "../coinray";
+import {correctNumberPrecision} from "../util";
 
 
 interface MarketOrderParams extends BaseOrderParams {
@@ -26,13 +28,17 @@ export default class MarketOrder extends BaseOrder {
       baseAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: maxBase ? this.minBase.toNumber() : undefined,
+          notGreaterThanOrEqualTo: `^${Coinray.I18n.t("validation.notGreaterThanOrEqualTo", {min: correctNumberPrecision(this.precisionBase, this.minBase)})}`,
           lessThanOrEqualTo: maxBase ? maxBase.toNumber() : undefined,
+          notLessThanOrEqualTo: `^${Coinray.I18n.t("validation.insufficientFunds")}`,
         }
       },
       quoteAmount: {
         bigNumericality: {
           greaterThanOrEqualTo: maxQuote ? this.minQuote.toNumber() : undefined,
+          notGreaterThanOrEqualTo: `^${Coinray.I18n.t("validation.notGreaterThanOrEqualTo", {min: correctNumberPrecision(this.precisionQuote, this.minQuote)})}`,
           lessThanOrEqualTo: maxQuote ? maxQuote.toNumber() : undefined,
+          notLessThanOrEqualTo: `^${Coinray.I18n.t("validation.insufficientFunds")}`,
         }
       },
     }
