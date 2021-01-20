@@ -1,5 +1,5 @@
 import validate from "./validate"
-import {BalanceLimit, BaseOrderParams, MarketBalance, OrderSide} from "../types";
+import {BalanceLimit, BaseOrderParams, MarketBalance, OrderSide, TimeInForce} from "../types";
 import BigNumber from "bignumber.js";
 import {safeBigNumber, safeInteger} from "../util";
 import UUID from "uuid/v4"
@@ -20,6 +20,9 @@ export default abstract class BaseOrder {
   errors: any;
   isValid: boolean;
   orderExternalId?: string;
+  reduceOnly?: boolean;
+  postOnly?: boolean;
+  timeInForce?: TimeInForce;
 
   constructor(params: BaseOrderParams) {
     this.coinraySymbol = params.coinraySymbol;
@@ -36,6 +39,9 @@ export default abstract class BaseOrder {
     this.orderExternalId = params.externalId;
     this.errors = {};
     this.isValid = true
+    this.reduceOnly = params.reduceOnly
+    this.postOnly =  params.postOnly
+    this.timeInForce = params.timeInForce
   }
 
   abstract constraints(): object

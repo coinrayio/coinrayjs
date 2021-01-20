@@ -87,6 +87,7 @@ export enum OrderStatus {
 }
 
 export enum OrderSide {BUY = "buy", SELL = "sell"}
+export enum TimeInForce {GTC = "gtc", FOK = "fok", IOC = "ioc"}
 
 export enum BalanceLimit {QUOTE = "quote", BASE = "base", NONE = "none"}
 
@@ -104,6 +105,9 @@ export interface SmartOrderParams {
   price?: BigNumber,
   stopPrice?: BigNumber,
   allowParams?: string[],
+  reduceOnly?: boolean,
+  postOnly?: boolean,
+  timeInForce?: TimeInForce,
 }
 
 export interface CreateOrderParams extends BaseParams {
@@ -112,6 +116,9 @@ export interface CreateOrderParams extends BaseParams {
   quantity: BigNumber,
   price?: BigNumber,
   stopPrice?: BigNumber,
+  reduceOnly?: boolean,
+  postOnly?: boolean,
+  timeInForce?: TimeInForce,
 }
 
 export interface UpdateOrderParams extends BaseParams {
@@ -121,6 +128,9 @@ export interface UpdateOrderParams extends BaseParams {
   quantity: BigNumber,
   price?: BigNumber,
   stopPrice?: BigNumber,
+  reduceOnly?: boolean,
+  postOnly?: boolean,
+  timeInForce?: TimeInForce,
 }
 
 export interface CancelOrderParams extends BaseParams {
@@ -141,6 +151,9 @@ export interface BaseOrderParams {
   side: OrderSide
   balances: MarketBalance
   balanceLimit?: BalanceLimit
+  reduceOnly?: boolean,
+  postOnly?: boolean,
+  timeInForce?: TimeInForce,
 }
 
 export interface Balance {
