@@ -244,7 +244,9 @@ export default class CurrentMarket extends EventEmitter {
       this.trades = [];
     }
 
-    this.trades = [...trades, ...this.trades].slice(0, this.maxTrades);
+    this.trades = [...trades, ...this.trades]
+        .sort((a, b) => b.time.getTime() - a.time.getTime())
+        .slice(0, this.maxTrades);
 
     this.dispatchEvent('tradesUpdated', {type, coinraySymbol, trades: this.trades})
   };
