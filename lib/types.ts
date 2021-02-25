@@ -138,6 +138,11 @@ export interface CancelOrderParams extends BaseParams {
   orderId: string
 }
 
+export interface AccountTestParams extends BaseParams{
+  encryptedApiKey: string,
+  exchangeCode: string
+}
+
 export interface BaseOrderParams {
   externalId?: string
   coinraySymbol: string

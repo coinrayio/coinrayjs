@@ -13,6 +13,7 @@ import {
 } from "./util";
 
 import {
+  AccountTestParams,
   Balance,
   CancelOrderParams,
   Candle,
@@ -598,6 +599,19 @@ export default class Coinray {
     }
   };
 
+  testAccount = async (accountTest: AccountTestParams) => {
+    try {
+      const {result} = await this.post("account/test", {
+        secret: this._sessionKey,
+        apiEndpoint: this.config.orderEndpoint,
+        body: {...accountTest, credential: this._credential}
+      });
+      return result
+    } catch (error) {
+      throw error
+    }
+  };
+
   createSmartOrderSignature = async (smartOrder: SmartOrderParams) => {
     try {
       const {result} = await this.post("order/smart_order_signature", {
@@ -847,8 +861,8 @@ export default class Coinray {
     } catch (error) {
       const {response, request} = error;
       if (response) {
-        const {error} = response.data;
-        throw new CoinrayError(error)
+        const {error, errors} = response.data;
+        throw new CoinrayError(error || {message: errors})
       } else {
         throw error
       }
