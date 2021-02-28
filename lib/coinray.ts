@@ -38,12 +38,14 @@ const VERSION = require('../package.json').version;
 export class CoinrayError extends Error {
   errorCode: number;
   errorMessage: string;
+  exchange: any;
 
-  constructor({code, message}) {
+  constructor({code, message, exchange}) {
     super("Request failed");
     this.name = "CoinrayError";
     this.errorCode = code;
     this.errorMessage = message;
+    this.exchange = exchange
   }
 }
 
@@ -88,11 +90,11 @@ export default class Coinray {
   private _timeOffsetInterval: any;
 
   constructor(token: string, {apiEndpoint, orderEndpoint, websocketEndpoint} =
-      {
-        apiEndpoint: "https://api.coinray.eu",
-        orderEndpoint: "https://api.coinray.eu",
-        websocketEndpoint: "wss://ws.coinray.eu/v1",
-      }) {
+    {
+      apiEndpoint: "https://api.coinray.eu",
+      orderEndpoint: "https://api.coinray.eu",
+      websocketEndpoint: "wss://ws.coinray.eu/v1",
+    }) {
     this._token = token;
     this._nonceOffset = 0;
     this._timeOffset = 0;
@@ -324,7 +326,7 @@ export default class Coinray {
 
       if (this._tradeListeners[coinraySymbol].length === 0) {
         this.getChannel("trades")
-            .push("unsubscribe", {symbols: coinraySymbol}, 5000)
+          .push("unsubscribe", {symbols: coinraySymbol}, 5000)
       }
     } else {
       this._tradeSnapshots[coinraySymbol] = []
@@ -398,7 +400,7 @@ export default class Coinray {
 
       if (this._orderbookListeners[coinraySymbol].length === 0) {
         this.getChannel("orderbooks")
-            .push("unsubscribe", {symbols: coinraySymbol}, 5000)
+          .push("unsubscribe", {symbols: coinraySymbol}, 5000)
       }
     } else {
       this._orderbookSnapshots[coinraySymbol] = {minSeq: 0, maxSeq: 0, bids: {}, asks: {}}
@@ -800,7 +802,13 @@ export default class Coinray {
     return channel
   }
 
-  get = async (endpoint: string, {apiEndpoint = undefined, version = "v2", headers = {}, params = {}, secret = ""} = {}) => await this._request(endpoint, "GET", {
+  get = async (endpoint: string, {
+    apiEndpoint = undefined,
+    version = "v2",
+    headers = {},
+    params = {},
+    secret = ""
+  } = {}) => await this._request(endpoint, "GET", {
     version,
     apiEndpoint,
     headers,
@@ -814,7 +822,14 @@ export default class Coinray {
 
   delete = async (endpoint: string, attributes) => await this._request(endpoint, "delete", attributes);
 
-  private async _request(endpoint: string, method: Method, {apiEndpoint, version = "v2", headers = {}, params = {}, body = {}, secret = ""}) {
+  private async _request(endpoint: string, method: Method, {
+    apiEndpoint,
+    version = "v2",
+    headers = {},
+    params = {},
+    body = {},
+    secret = ""
+  }) {
     const token = await this.getToken();
 
     const paramString = Object.entries(params).length > 0 ? '?' + Object.entries(params).map(([key, val]) => val ? `${key}=${val}` : undefined).filter(Boolean).join('&') : "";
@@ -861,8 +876,8 @@ export default class Coinray {
     } catch (error) {
       const {response, request} = error;
       if (response) {
-        const {error, errors} = response.data;
-        throw new CoinrayError(error || {message: errors})
+        const {error} = response.data;
+        throw new CoinrayError(error)
       } else {
         throw error
       }
