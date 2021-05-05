@@ -6,6 +6,8 @@ import {OrderBookSide} from "./types";
 import BigNumber from "bignumber.js";
 import {MarketNotFoundError} from "./errors";
 
+export const TRADES_DELAY_THRESHOLD = 30 * 1000
+
 export default class CurrentMarket extends EventEmitter {
   private coinrayCache: CoinrayCache;
   public coinraySymbol: string;
@@ -15,6 +17,7 @@ export default class CurrentMarket extends EventEmitter {
   private trades: any[];
   private tradesStarted: boolean;
   private orderBookStarted: boolean;
+  private tradesDelayed: boolean;
   private maxTrades: number;
 
   constructor(api: Coinray, coinrayCache: CoinrayCache, options = {} as any) {
@@ -245,11 +248,29 @@ export default class CurrentMarket extends EventEmitter {
     }
 
     this.trades = [...trades, ...this.trades]
-        .sort((a, b) => b.time.getTime() - a.time.getTime())
-        .slice(0, this.maxTrades);
+      .sort((a, b) => b.time.getTime() - a.time.getTime())
+      .slice(0, this.maxTrades);
 
     this.dispatchEvent('tradesUpdated', {type, coinraySymbol, trades: this.trades})
+
+    if (!this.trades.length) return
+    const delayInMs = Date.now() - this.trades[0].time.getTime()
+
+    if (type === "trades:snapshot" && this.tradesDelayed) {
+      this.dispatchTradesDelayed({type, coinraySymbol, tradesDelayed: false, delayInMs})
+    } else if (type === "trades:update") {
+      if (this.tradesDelayed && delayInMs < TRADES_DELAY_THRESHOLD) {
+        this.dispatchTradesDelayed({type, coinraySymbol, tradesDelayed: false, delayInMs})
+      } else if (!this.tradesDelayed && delayInMs >= TRADES_DELAY_THRESHOLD) {
+        this.dispatchTradesDelayed({type, coinraySymbol, tradesDelayed: true, delayInMs})
+      }
+    }
   };
+
+  dispatchTradesDelayed = ({type, coinraySymbol, tradesDelayed, delayInMs}) => {
+    this.tradesDelayed = tradesDelayed
+    this.dispatchEvent('tradesDelayed', {type, coinraySymbol, tradesDelayed, delayInMs})
+  }
 
   unsubscribeTrades = (callback) => {
     this.off('tradesUpdated', callback)
@@ -257,4 +278,14 @@ export default class CurrentMarket extends EventEmitter {
       this.stopTrades();
     }
   };
+
+  subscribeTradesDelayed = (callback) => {
+    this.on('tradesDelayed', callback);
+    return callback;
+  };
+
+  unsubscribeTradesDelayed = (callback) => {
+    this.off('tradesDelayed', callback)
+  };
+
 }
