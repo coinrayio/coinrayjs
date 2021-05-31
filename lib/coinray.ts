@@ -90,11 +90,11 @@ export default class Coinray {
   private _timeOffsetInterval: any;
 
   constructor(token: string, {apiEndpoint, orderEndpoint, websocketEndpoint} =
-    {
-      apiEndpoint: "https://api.coinray.eu",
-      orderEndpoint: "https://api.coinray.eu",
-      websocketEndpoint: "wss://ws.coinray.eu/v1",
-    }) {
+      {
+        apiEndpoint: "https://api.coinray.eu",
+        orderEndpoint: "https://api.coinray.eu",
+        websocketEndpoint: "wss://ws.coinray.eu/v1",
+      }) {
     this._token = token;
     this._nonceOffset = 0;
     this._timeOffset = 0;
@@ -250,12 +250,16 @@ export default class Coinray {
     }
 
     Object.keys(this._tradeListeners).forEach((coinraySymbol) => {
-      const channel = this.getChannel("trades");
-      channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
+      if (this._tradeListeners[coinraySymbol].length > 0) {
+        const channel = this.getChannel("trades");
+        channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
+      }
     });
     Object.keys(this._orderbookListeners).forEach((coinraySymbol) => {
-      const channel = this.getChannel("orderbooks");
-      channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
+      if (this._orderbookListeners[coinraySymbol].length > 0) {
+        const channel = this.getChannel("orderbooks");
+        channel.push("subscribe", {symbols: coinraySymbol, snapshots: true}, 5000);
+      }
     });
   }
 
@@ -326,7 +330,7 @@ export default class Coinray {
 
       if (this._tradeListeners[coinraySymbol].length === 0) {
         this.getChannel("trades")
-          .push("unsubscribe", {symbols: coinraySymbol}, 5000)
+            .push("unsubscribe", {symbols: coinraySymbol}, 5000)
       }
     } else {
       this._tradeSnapshots[coinraySymbol] = []
@@ -400,7 +404,7 @@ export default class Coinray {
 
       if (this._orderbookListeners[coinraySymbol].length === 0) {
         this.getChannel("orderbooks")
-          .push("unsubscribe", {symbols: coinraySymbol}, 5000)
+            .push("unsubscribe", {symbols: coinraySymbol}, 5000)
       }
     } else {
       this._orderbookSnapshots[coinraySymbol] = {minSeq: 0, maxSeq: 0, bids: {}, asks: {}}
