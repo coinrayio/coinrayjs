@@ -24,6 +24,7 @@ import {
   OrderBook,
   OrderBookSide,
   SmartOrderParams,
+  Ticker,
   Trade,
   UpdateOrderParams,
 } from "./types";
@@ -68,6 +69,7 @@ export default class Coinray {
   private _socket?: Socket;
   private _transport: any;
 
+  private _tickerListeners: any = {};
   private _tradeListeners: any = {};
   private _tradeSnapshots: any = {};
   private _orderbookListeners: any = {};
@@ -84,6 +86,7 @@ export default class Coinray {
   _refreshingToken: Promise<string>;
   private onReconnect: any;
   private _nonceOffset: number;
+  private tickersSubscribed: boolean = false;
   private tradesSubscribed: boolean = false;
   private orderBookSubscribed: boolean = false;
   private _timeOffset: number;
@@ -116,6 +119,8 @@ export default class Coinray {
 
   destroy = () => {
     this._tradeListeners = {};
+    this._orderbookListeners = {};
+    this._tickerListeners = {};
     this._channels = {};
 
     if (this._timeOffsetInterval) {
@@ -249,6 +254,14 @@ export default class Coinray {
       return
     }
 
+
+    Object.keys(this._tickerListeners).forEach((exchangeCode) => {
+      if (this._tickerListeners[exchangeCode].length > 0) {
+        const channel = this.getChannel("tickers");
+        channel.push("subscribe", {exchangeCodes: [exchangeCode]}, 5000);
+      }
+    });
+
     Object.keys(this._tradeListeners).forEach((coinraySymbol) => {
       if (this._tradeListeners[coinraySymbol].length > 0) {
         const channel = this.getChannel("trades");
@@ -262,6 +275,53 @@ export default class Coinray {
       }
     });
   }
+
+  subscribeTickers = async (exchangeCode: string, callback: (payload: any) => void) => {
+    if (this._tickerListeners[exchangeCode] && this._tickerListeners[exchangeCode].length > 0) {
+      this._tickerListeners[exchangeCode].push(callback);
+      return callback
+    }
+
+    // Run only once per coinraySymbol
+    this._tickerListeners[exchangeCode] = [callback];
+
+    await this.connect();
+    const channel = this.getChannel("tickers");
+    channel.push("subscribe", {exchangeCodes: [exchangeCode]}, 5000);
+
+    if (this.tickersSubscribed) {
+      return callback
+    }
+    this.tickersSubscribed = true;
+
+    channel.on("update", (payload) => {
+      let {exchange_code: exchangeCode, tickers} = payload
+      const callbacks = Object.values(this._tickerListeners[exchangeCode]) as [];
+      const parsedTickers = tickers.map(Coinray._parseTicker);
+
+      callbacks.map((callback: (payload: any) => void) => callback({
+        type: "tickers:update",
+        exchangeCode,
+        tickers: parsedTickers
+      }))
+    });
+    channel.on("error", (payload) => console.error(payload));
+
+    return callback
+  };
+
+  unsubscribeTickers = (exchangeCode: string, callback?: (payload: any) => void) => {
+    if (callback && this._tickerListeners[exchangeCode]) {
+      this._tickerListeners[exchangeCode] = this._tickerListeners[exchangeCode].filter((c: (payload: any) => void) => c !== callback);
+
+      if (this._tickerListeners[exchangeCode].length === 0) {
+        this.getChannel("tickers")
+            .push("unsubscribe", {exchangeCodes: [exchangeCode]}, 5000);
+      }
+    } else {
+      this._tickerListeners[exchangeCode] = []
+    }
+  };
 
   subscribeTrades = async ({coinraySymbol}: MarketParam, callback: (payload: any) => void) => {
     if (this._tradeListeners[coinraySymbol] && this._tradeListeners[coinraySymbol].length > 0) {
@@ -963,6 +1023,25 @@ export default class Coinray {
       price: safeBigNumber(price),
       quantity: safeBigNumber(quantity),
       type: ['1', 'buy'].includes(isBuy.toString()) ? "buy" : "sell"
+    }
+  }
+
+  private static _parseTicker(ticker): Ticker {
+    return {
+      askPrice: safeBigNumber(ticker.a),
+      baseVolume: safeBigNumber(ticker.bv),
+      bidPrice: safeBigNumber(ticker.b),
+      btcVolume: safeBigNumber(ticker.B),
+      coinraySymbol: ticker.s,
+      highPrice1s: safeBigNumber(ticker.h),
+      highPrice24h: safeBigNumber(ticker.H),
+      lastPrice: safeBigNumber(ticker.c),
+      lowPrice1s: safeBigNumber(ticker.l),
+      lowPrice24h: safeBigNumber(ticker.L),
+      openPrice1s: safeBigNumber(ticker.o),
+      openPrice24h: safeBigNumber(ticker.O),
+      quoteVolume: safeBigNumber(ticker.qv),
+      usdVolume: safeBigNumber(ticker.U)
     }
   }
 

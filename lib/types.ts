@@ -57,6 +57,23 @@ export interface Trade {
   type: "sell" | "buy"
 }
 
+export interface Ticker {
+  coinraySymbol: string,
+  baseVolume: BigNumber,
+  quoteVolume: BigNumber,
+  btcVolume: BigNumber,
+  usdVolume: BigNumber,
+  openPrice24h: BigNumber,
+  highPrice24h: BigNumber,
+  lowPrice24h: BigNumber,
+  openPrice1s: BigNumber,
+  highPrice1s: BigNumber,
+  lowPrice1s: BigNumber,
+  lastPrice: BigNumber,
+  askPrice: BigNumber,
+  bidPrice: BigNumber,
+}
+
 export interface TradeList {
   coinraySymbol: string,
   trades: Trade[]
