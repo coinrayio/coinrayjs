@@ -483,10 +483,14 @@ export default class Coinray {
 
     const candleCallback = ({type, coinraySymbol, trades}: any) => {
       const callbacks = Object.values(this._candleListeners[candleId]) as [];
-      const lastCandles = Coinray._tradesToLastCandle(resolution, trades);
-      const lastCandle = lastCandles[0]
+      const lastCandles = Coinray._tradesToLastCandle(resolution, _.sortBy(trades, ({time})=> time));
+      const lastCandle = lastCandles[lastCandles.length - 1]
 
       if (lastCandle) {
+        if (this._candles[candleId] && type === "trades:snapshot") {
+          this._candles[candleId].skipVolume = true;
+        }
+
         this._candles[candleId] = Coinray._mergeCandle(this._candles[candleId], lastCandle);
 
         callbacks.map((callback: (payload: any) => void) => callback({
@@ -543,9 +547,11 @@ export default class Coinray {
     });
 
     // Fetch data from the websocket snapshot to merge the highs and lows
-    if (useWebSocket && end > minDate.getTime()) {
+    if (useWebSocket && end > minDate.getTime() / 1000) {
       const subscribe = new Promise(resolve => {
+        let timeout = setTimeout(() => resolve([]), 1000)
         const onSnapshot = ({previousCandles}) => {
+          clearTimeout(timeout)
           this.unsubscribeCandles({coinraySymbol, resolution}, onSnapshot)
           resolve(previousCandles)
         }
@@ -1076,8 +1082,6 @@ export default class Coinray {
     return Object.values(groupedTrades).map((currentCandleTrades) => {
       const currentTime = currentCandleTrades[0].time.getTime()
       const startDate = new Date(currentTime - (currentTime % seconds));
-
-      // const currentCandleTrades = trades.filter((trade) => trade.time >= startDate);
 
       if (currentCandleTrades.length === 0) {
         return undefined
