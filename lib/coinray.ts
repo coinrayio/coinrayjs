@@ -483,7 +483,7 @@ export default class Coinray {
 
     const candleCallback = ({type, coinraySymbol, trades}: any) => {
       const callbacks = Object.values(this._candleListeners[candleId]) as [];
-      const lastCandles = Coinray._tradesToLastCandle(resolution, _.sortBy(trades, ({time})=> time));
+      const lastCandles = Coinray._tradesToLastCandle(resolution, type === "trades:snapshot" ? trades : trades.reverse());
       const lastCandle = lastCandles[lastCandles.length - 1]
 
       if (lastCandle) {
@@ -1078,8 +1078,9 @@ export default class Coinray {
   private static _tradesToLastCandle(resolution: string, trades: Trade[]): Candle[] {
     const seconds = Coinray._resolutionToSeconds(resolution);
 
-    const groupedTrades = _.groupBy(trades, ({time}) => new Date(Math.floor(time.getTime() / seconds) * seconds))
-    return Object.values(groupedTrades).map((currentCandleTrades) => {
+    const groupedTrades = _.groupBy(trades.reverse(), ({time}) => Math.floor(time.getTime() / seconds) * seconds)
+    return _.sortBy(Object.keys(groupedTrades), (date) => parseInt(date)).map((date) => {
+      const currentCandleTrades = groupedTrades[date]
       const currentTime = currentCandleTrades[0].time.getTime()
       const startDate = new Date(currentTime - (currentTime % seconds));
 

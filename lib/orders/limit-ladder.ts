@@ -27,7 +27,8 @@ const PRICE_SCALES = {
     return _.times(numOrders, (index) => (1 / (numOrders - 1)) * index)
   },
   [PriceScales.EXPONENTIAL]: (numOrders: number): Array<number> => {
-    return PRICE_SCALES[PriceScales.LINEAR](numOrders).map((value) => (value) ** 2)
+    const sum = 2**(numOrders-1)
+    return _.times(numOrders, (index) => index == 0 ? 0 : (2**index)/sum)
   },
   [PriceScales.FIBONACCI]: (numOrders: number): Array<number> => {
     const numbers = [0, 0.09, 0.146, 0.236, 0.382, 0.5, 0.618, 0.788, 0.886];
@@ -54,7 +55,8 @@ const SIZE_SCALES = {
     return normalizeSizeScale(scale)
   },
   [SizeScales.EXPONENTIAL]: (numOrders: number): Array<number> => {
-    const scale = SIZE_SCALES[SizeScales.LINEAR](numOrders).map((value) => value ** 2);
+    const sum = 2**numOrders - 1
+    const scale = _.times(numOrders, (index) => (2**index) / sum);
     return normalizeSizeScale(scale)
   },
   [SizeScales.LINEAR_REVERSE]: (numOrders: number): Array<number> => {
