@@ -472,7 +472,7 @@ export default class Coinray {
     }
   };
 
-  subscribeCandles = async ({coinraySymbol, resolution}: CandleParam, callback: (payload: any) => void) => {
+  subscribeCandles = async ({coinraySymbol, resolution, lastCandle}: CandleParam, callback: (payload: any) => void) => {
     const candleId = `${coinraySymbol}-${resolution}`;
 
     if (this._candleListeners[candleId] && this._candleListeners[candleId].length > 0) {
@@ -508,7 +508,6 @@ export default class Coinray {
       this._candleTradeListeners[coinraySymbol] = {[candleId]: candleCallback};
     }
 
-    const lastCandle = await this.fetchLastCandle({coinraySymbol, resolution});
     this._candles[candleId] = lastCandle || {time: 0};
     await this.subscribeTrades({coinraySymbol}, candleCallback);
 
@@ -570,22 +569,6 @@ export default class Coinray {
         return candle
       }
     });
-  };
-
-  fetchLastCandle = async ({coinraySymbol, resolution}: CandleParam): Promise<Candle | undefined> => {
-    const {result} = await this.get("candles/latest", {
-      version: "v1",
-      params: {
-        symbol: coinraySymbol,
-        resolution: resolution,
-      }
-    });
-
-    if (result.length > 0) {
-      const candle = Coinray._parseCandle(result[0])
-      candle.skipVolume = true // Mark the candle to skip adding the volume on the first run
-      return candle
-    }
   };
 
   fetchExchanges = async (): Promise<Array<Exchange>> => {
@@ -1120,7 +1103,7 @@ export default class Coinray {
   };
 
   private static _mergeCandle(currentCandle: Candle, candle: Candle): Candle {
-    if (currentCandle.time < candle.time) {
+    if (!currentCandle || currentCandle.time < candle.time) {
       return candle
     }
 

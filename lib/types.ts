@@ -18,7 +18,8 @@ export interface Candle {
 
 export interface CandleParam {
   coinraySymbol: string,
-  resolution: string
+  resolution: string,
+  lastCandle?: Candle
 }
 
 export interface CandlesParam {
