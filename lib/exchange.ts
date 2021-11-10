@@ -126,6 +126,28 @@ export default class Exchange {
     return this.exchangeSymbols[exchangeSymbol]
   }
 
+  getCurrencyPrice(usdValue, currency) {
+    for (let [_, market] of Object.entries(this.markets)) {
+      if (market.baseCurrency === currency) {
+        return safeBigNumber(usdValue).dividedBy(market.baseToUsd)
+      } else if (market.quoteCurrency === currency) {
+        return safeBigNumber(usdValue).dividedBy(market.quoteToUsd)
+      }
+    }
+    return new BigNumber(0)
+  }
+
+  getUsdPrice(value, currency) {
+    for (let [_, market] of Object.entries(this.markets)) {
+      if (market.baseCurrency === currency) {
+        return market.baseToUsd.multipliedBy(value)
+      } else if (market.quoteCurrency === currency) {
+        return market.quoteToUsd.multipliedBy(value)
+      }
+    }
+    return new BigNumber(0)
+  }
+
   getMarket(coinraySymbol) {
     return this.markets[coinraySymbol]
   }
