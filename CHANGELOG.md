@@ -1,3 +1,8 @@
+# Version 1.5.1
+- Remove the last candle fetch on fetch candles
+- Added getCurrencyPrice
+- Added getUsdPrice
+
 # Version 1.1.0
 - Change times to Date objects
 - Change OrderBook, Trade number to BigNumbers
