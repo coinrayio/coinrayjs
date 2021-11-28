@@ -1,6 +1,6 @@
 {
   "name": "coinrayjs",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "Javascript Library for Coinray.io",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

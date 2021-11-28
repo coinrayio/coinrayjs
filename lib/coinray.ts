@@ -711,7 +711,11 @@ export default class Coinray {
       const {result} = await this.delete("order", {
         secret: this._sessionKey,
         apiEndpoint: this.config.orderEndpoint,
-        body: {...order, credential: this._credential}
+        body: {
+          orderType: order.orderType,
+          orderId: order.orderId.toString(),
+          credential: this._credential
+        }
       });
       return result
     } catch (error) {
