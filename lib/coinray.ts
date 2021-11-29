@@ -712,7 +712,7 @@ export default class Coinray {
         secret: this._sessionKey,
         apiEndpoint: this.config.orderEndpoint,
         body: {
-          orderType: order.orderType,
+          ...order,
           orderId: order.orderId.toString(),
           credential: this._credential
         }
