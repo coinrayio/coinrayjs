@@ -105,6 +105,9 @@ export default class Exchange {
     this.code = d.code;
     this.websocket = d.websocket;
     this.isFutures = !!d.isFutures;
+    this.active = d.active;
+    this.tradingEnabled = d.tradingEnabled;
+    this.tradingEnabledFrom = d.tradingEnabledFrom;
     this.logo = d.logo;
     this.btcVolume = safeBigNumber(d.btcVolume);
     this.usdVolume = safeBigNumber(d.usdVolume);
@@ -113,7 +116,6 @@ export default class Exchange {
     this.supportedResolutions = d.supportedResolutions;
     this.supportedOrderTypes = d.supportedOrderTypes;
     this.baseCurrencyDominance = d.baseCurrencyDominance;
-    this.apiKeySettings = d.apiKeySettings;
     this.markets = {};
     this.exchangeSymbols = {}
   }
