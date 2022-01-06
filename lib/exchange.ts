@@ -39,6 +39,9 @@ export default class Exchange {
   public readonly name: string;
   public readonly code: string;
   public readonly websocket: boolean;
+  public readonly active: boolean;
+  public readonly tradingEnabled: boolean;
+  public readonly tradingEnabledFrom: string;
   public readonly isFutures: boolean;
   public readonly logo: string;
   public readonly btcVolume: BigNumber;
@@ -49,6 +52,7 @@ export default class Exchange {
   public readonly supportedOrderTypes: OrderType[] | null;
   public readonly baseCurrencyDominance: object | null;
   public readonly apiKeySettings: ApiKeySettings;
+
   public markets: MarketMap;
   public exchangeSymbols: {};
 
@@ -64,6 +68,9 @@ export default class Exchange {
     checkString(d.name, false, "name");
     checkString(d.code, false, "code");
     checkBoolean(d.websocket, false, "websocket");
+    checkBoolean(d.active, false, "active");
+    checkBoolean(d.tradingEnabled, false, "tradingEnabled");
+    checkBoolean(d.tradingEnabledFrom, false, "tradingEnabledFrom");
     checkBoolean(d.isFutures, true, "isFutures");
     checkString(d.logo, false, "logo");
     checkString(d.btcVolume, false, "btcVolume");
