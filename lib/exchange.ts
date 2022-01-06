@@ -16,6 +16,23 @@ import Coinray from "./coinray";
 import {MarketMap, OrderType} from "./types";
 import _ from "lodash"
 
+export class ExtraSetting {
+  public readonly key: string;
+  public readonly label: string;
+}
+
+export class ApiVersion {
+  public readonly value: string;
+  public readonly label: string;
+}
+
+export class ApiKeySettings {
+  public readonly extraKeys: boolean;
+  public readonly passphraseRequired: boolean;
+  public readonly extraSettings: ExtraSetting[] | null;
+  public readonly versions: ApiVersion[] | null
+}
+
 export default class Exchange {
   public readonly api: Coinray;
   public readonly id: number;
@@ -31,6 +48,7 @@ export default class Exchange {
   public readonly supportedResolutions: string[] | null;
   public readonly supportedOrderTypes: OrderType[] | null;
   public readonly baseCurrencyDominance: object | null;
+  public readonly apiKeySettings: ApiKeySettings;
   public markets: MarketMap;
   public exchangeSymbols: {};
 
@@ -69,6 +87,7 @@ export default class Exchange {
     if (d.supportedResolutions === undefined) {
       d.supportedResolutions = null;
     }
+
     return new Exchange(d, api);
   }
 
@@ -87,6 +106,7 @@ export default class Exchange {
     this.supportedResolutions = d.supportedResolutions;
     this.supportedOrderTypes = d.supportedOrderTypes;
     this.baseCurrencyDominance = d.baseCurrencyDominance;
+    this.apiKeySettings = d.apiKeySettings;
     this.markets = {};
     this.exchangeSymbols = {}
   }
