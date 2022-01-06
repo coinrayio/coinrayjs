@@ -70,7 +70,7 @@ export default class Exchange {
     checkBoolean(d.websocket, false, "websocket");
     checkBoolean(d.active, false, "active");
     checkBoolean(d.tradingEnabled, false, "tradingEnabled");
-    checkBoolean(d.tradingEnabledFrom, false, "tradingEnabledFrom");
+    checkString(d.tradingEnabledFrom, false, "tradingEnabledFrom");
     checkBoolean(d.isFutures, true, "isFutures");
     checkString(d.logo, false, "logo");
     checkString(d.btcVolume, false, "btcVolume");
