@@ -116,6 +116,7 @@ export default class Exchange {
     this.supportedResolutions = d.supportedResolutions;
     this.supportedOrderTypes = d.supportedOrderTypes;
     this.baseCurrencyDominance = d.baseCurrencyDominance;
+    this.apiKeySettings = d.apiKeySettings;
     this.markets = {};
     this.exchangeSymbols = {}
   }
@@ -135,6 +136,7 @@ export default class Exchange {
       quoteCurrencies: this.quoteCurrencies,
       supportedResolutions: this.supportedResolutions,
       baseCurrencyDominance: this.baseCurrencyDominance,
+      apiKeySettings: this.apiKeySettings,
     }, this.api)
   }
 
