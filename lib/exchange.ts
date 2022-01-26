@@ -141,7 +141,7 @@ export default class Exchange {
   }
 
   async loadMarkets() {
-    const markets = await this.api.fetchMarkets(this.code);
+    const markets = await this.api.fetchMarkets(this);
 
     if (markets.length > 0) {
       this.markets = _.keyBy(markets, "coinraySymbol");

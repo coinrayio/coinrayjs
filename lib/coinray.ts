@@ -578,18 +578,18 @@ export default class Coinray {
     return exchanges.map((exhange) => Exchange.Create(exhange, this))
   };
 
-  fetchMarkets = async (exchange): Promise<Array<Market>> => {
+  fetchMarkets = async (exchange: Exchange): Promise<Array<Market>> => {
     const {result: {markets}} = await this.get("markets", {
       version: "v1",
       params: {
-        exchange
+        exchange: exchange.code
       }
     });
     return markets.map((market) => {
       try {
-        return Market.Create(market, this)
+        return Market.Create(market, this, exchange)
       } catch (error) {
-        return new Market(market, this)
+        return new Market(market, this, exchange)
       }
     })
   };
