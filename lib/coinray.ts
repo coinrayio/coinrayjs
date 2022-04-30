@@ -136,6 +136,9 @@ export default class Coinray {
     if (jwtExpired(this._token)) {
       console.log("Coinray token expired. Can refresh:", !!this._onTokenExpired);
       if (!this._onTokenExpired) {
+        if (this._tokenCheckInterval) {
+          clearInterval(this._tokenCheckInterval)
+        }
         return false
       }
       if (!this._refreshingToken) {
