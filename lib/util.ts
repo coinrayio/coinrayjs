@@ -8,6 +8,7 @@ import {base64url} from "rfc4648";
 export const MINUTES = 60;
 export const HOURS = 60 * MINUTES;
 export const DAYS = 24 * HOURS;
+export const WEEK = 7 * DAYS;
 
 
 export function unix() {
@@ -196,6 +197,90 @@ export function safeTime(d: string | number): Date {
   return new Date(time)
 }
 
+
+export function resolutionToDuration(resolution: String): number {
+  switch (resolution.toString().toUpperCase()) {
+    case "1":
+      return MINUTES
+    case "2":
+      return MINUTES * 2
+    case "3":
+      return MINUTES * 3
+    case "5":
+      return MINUTES * 5
+    case "10":
+      return MINUTES * 10
+    case "15":
+      return MINUTES * 15
+    case "30":
+      return MINUTES * 30
+    case "60":
+      return MINUTES * 60
+    case "120":
+      return MINUTES * 120
+    case "240":
+      return MINUTES * 240
+    case "360":
+      return MINUTES * 360
+    case "720":
+      return MINUTES * 720
+    case "D":
+    case "1D":
+      return DAYS
+    case "3D":
+      return DAYS * 3
+    case "W":
+      return WEEK
+    case "1W":
+      return WEEK
+    case "2W":
+      return WEEK * 2
+    case "1M":
+      return DAYS * 30
+  }
+}
+
+export function resolutionToBucket(resolution: String): number {
+  switch (resolution) {
+    case "1":
+      return DAYS / MINUTES
+    case "2":
+      return DAYS / MINUTES
+    case "3":
+      return DAYS / MINUTES
+    case "5":
+      return DAYS / MINUTES
+    case "10":
+      return DAYS / MINUTES
+    case "15":
+      return DAYS / MINUTES
+    case "30":
+      return DAYS / MINUTES
+    case "60":
+      return DAYS / MINUTES
+    case "120":
+      return DAYS / MINUTES
+    case "240":
+      return DAYS / MINUTES
+    case "360":
+      return DAYS / MINUTES
+    case "720":
+      return DAYS / MINUTES
+    case "D":
+      return DAYS * 10
+    case "1D":
+      return DAYS * 10
+  }
+}
+
+export function candleTime(slotsAgo: number, resolution: String, date: number | Date): number {
+  let timeSpan = resolutionToDuration(resolution)
+  let time = typeof date === "object" ? date.getTime() / 1000 : date
+
+  return (Math.floor(time / timeSpan) * timeSpan) - (timeSpan * (slotsAgo - 1))
+
+}
+
 export function filterMarkets(markets: MarketMap, marketQuery: string | MarketQuery | (string | MarketQuery)[]) {
   let queries: MarketQuery[] = marketQuery as MarketQuery[];
   if (typeof (marketQuery) === "string") {
@@ -223,7 +308,7 @@ export function filterMarkets(markets: MarketMap, marketQuery: string | MarketQu
     if (query.match(/[-_:\/\\]+/)) {
       try {
         matcher = new RegExp(query.replace(/\*/g, ".*"), "i");
-      } catch(error) {
+      } catch (error) {
         // Do nothing
       }
     }

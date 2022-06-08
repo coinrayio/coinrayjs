@@ -1,12 +1,12 @@
 import axios, {AxiosRequestConfig, Method} from "axios";
 import {Channel, Socket} from "phoenix";
 import {
-  camelize,
+  camelize, candleTime,
   createJWT,
   encryptPayload,
   jwkToPublicKey,
   jwtExpired,
-  parseJWT,
+  parseJWT, resolutionToBucket,
   safeBigNumber,
   safeTime,
   signHMAC
@@ -103,9 +103,9 @@ export default class Coinray {
     this._timeOffset = 0;
     this._firstOpen = true;
     this.config = {
-      apiEndpoint: apiEndpoint || "https://coinray.io",
-      orderEndpoint: orderEndpoint || apiEndpoint || "https://coinray.io",
-      websocketEndpoint: websocketEndpoint || "wss://ws.coinray.io/v1"
+      apiEndpoint: apiEndpoint || "https://api.coinray.eu",
+      orderEndpoint: orderEndpoint || apiEndpoint || "https://api.coinray.eu",
+      websocketEndpoint: websocketEndpoint || "wss://ws.coinray.eu/v1"
     };
 
     this.loadTimeOffset().then();
@@ -538,15 +538,37 @@ export default class Coinray {
     minDate.setMinutes(minDate.getMinutes() - 5)
     let indexedSnapshot = {}
 
-    const candlePromise = this.get("candles", {
-      version: "v1",
-      params: {
-        symbol: coinraySymbol,
-        resolution: resolution,
-        start_time: start,
-        end_time: end
-      }
-    });
+    let recentCandleTime = candleTime(1, "1D", candleTime(10, resolution, minDate))
+
+    let requests = []
+    let currentStart = end
+    if (recentCandleTime > end) {
+      requests.push(this.get("candles", {
+        version: "v1",
+        params: {
+          symbol: coinraySymbol,
+          resolution: resolution,
+          start_time: recentCandleTime,
+          end_time: end
+        }
+      }))
+      currentStart = recentCandleTime
+    }
+
+    while (currentStart >= start) {
+      let newEnd = candleTime(2, resolution, currentStart)
+      currentStart = candleTime(resolutionToBucket(resolution) + 1, resolution, newEnd)
+
+      requests.push(this.get("candles", {
+        version: "v1",
+        params: {
+          symbol: coinraySymbol,
+          resolution: resolution,
+          start_time: currentStart,
+          end_time: newEnd
+        }
+      }))
+    }
 
     // Fetch data from the websocket snapshot to merge the highs and lows
     if (useWebSocket && end > minDate.getTime() / 1000) {
@@ -562,16 +584,22 @@ export default class Coinray {
       const snapshot = await subscribe as Candle[]
       indexedSnapshot = _.keyBy(snapshot, ({time}) => time.getTime())
     }
-    const {result} = await candlePromise
 
-    return result.map(Coinray._parseCandle).map((candle) => {
-      const snapshotCandle = indexedSnapshot[candle.time.getTime()]
-      if (snapshotCandle) {
-        return Coinray._mergeCandle(candle, snapshotCandle)
-      } else {
-        return candle
-      }
-    });
+    let results = await Promise.all(requests)
+
+    return results.reduce((candles, {result}) => {
+      return candles.concat(result.map(Coinray._parseCandle).filter(({time}) => {
+        time = time.getTime() / 1000
+        return time >= start && time <= end
+      }).map((candle) => {
+        const snapshotCandle = indexedSnapshot[candle.time.getTime()]
+        if (snapshotCandle) {
+          return Coinray._mergeCandle(candle, snapshotCandle)
+        } else {
+          return candle
+        }
+      }));
+    }, []).sort((left, right) => left.time - right.time)
   };
 
   fetchExchanges = async (): Promise<Array<Exchange>> => {
