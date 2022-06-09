@@ -6,10 +6,10 @@ import {
   encryptPayload,
   jwkToPublicKey,
   jwtExpired,
-  parseJWT, resolutionToBucket,
+  parseJWT,
   safeBigNumber,
   safeTime,
-  signHMAC
+  signHMAC, toBucketStart
 } from "./util";
 
 import {
@@ -538,38 +538,26 @@ export default class Coinray {
     minDate.setMinutes(minDate.getMinutes() - 5)
     let indexedSnapshot = {}
 
-    let recentCandleTime = candleTime(1, "1D", candleTime(10, resolution, minDate))
+    let minStart = toBucketStart(candleTime(10, resolution, end), resolution)
+
+    let currentStart = Math.min(toBucketStart(end, resolution), minStart)
+    let currentEnd = end
 
     let requests = []
-    let currentStart
-    if (recentCandleTime < end) {
-      requests.push(this.get("candles", {
-        version: "v1",
-        params: {
-          symbol: coinraySymbol,
-          resolution: resolution,
-          start_time: recentCandleTime,
-          end_time: end
-        }
-      }))
-      currentStart = recentCandleTime
-    } else {
-      currentStart = candleTime(0, "1D", end)
-    }
 
-    while (currentStart >= start) {
-      let newEnd = candleTime(2, resolution, currentStart)
-      currentStart = candleTime(resolutionToBucket(resolution) + 1, resolution, newEnd)
-
+    let firstCandle = toBucketStart(Math.min(start, minStart), resolution)
+    while (currentStart >= firstCandle) {
       requests.push(this.get("candles", {
         version: "v1",
         params: {
           symbol: coinraySymbol,
           resolution: resolution,
           start_time: currentStart,
-          end_time: newEnd
+          end_time: currentEnd
         }
       }))
+      currentEnd = currentStart - 1
+      currentStart = toBucketStart(currentStart - 1, resolution)
     }
 
     // Fetch data from the websocket snapshot to merge the highs and lows

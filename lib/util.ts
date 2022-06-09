@@ -240,37 +240,62 @@ export function resolutionToDuration(resolution: String): number {
   }
 }
 
-export function resolutionToBucket(resolution: String): number {
-  switch (resolution) {
-    case "1":
-      return DAYS / MINUTES
-    case "2":
-      return DAYS / MINUTES
-    case "3":
-      return DAYS / MINUTES
-    case "5":
-      return DAYS / MINUTES
-    case "10":
-      return DAYS / MINUTES
-    case "15":
-      return DAYS / MINUTES
-    case "30":
-      return DAYS / MINUTES
-    case "60":
-      return DAYS / MINUTES
-    case "120":
-      return DAYS / MINUTES
-    case "240":
-      return DAYS / MINUTES
-    case "360":
-      return DAYS / MINUTES
-    case "720":
-      return DAYS / MINUTES
-    case "D":
-      return DAYS * 10
-    case "1D":
-      return DAYS * 10
-  }
+export const toSafeDate = (timeOrDate) => {
+  return typeof timeOrDate === "object" ? timeOrDate : new Date(timeOrDate * 1000)
+}
+
+export const toUtcTime = (date) => {
+  return Math.floor(toSafeDate(date).getTime() / 1000)
+}
+
+export const beginningOfDay = (timeOrDate) => {
+  let date = toSafeDate(timeOrDate)
+  date.setUTCHours(0, 0, 0, 0)
+  return toUtcTime(date)
+}
+
+export const beginningOfWeek = (timeOrDate) => {
+  let date = toSafeDate(timeOrDate)
+  const dayOfWeek = date.getUTCDay()
+  const diff = dayOfWeek >= 1 ? dayOfWeek - 1 : 6 - dayOfWeek
+
+  date.setUTCDate(date.getDate() - diff)
+  date.setUTCHours(0, 0, 0, 0)
+
+  return toUtcTime(date)
+}
+
+export const beginningOfMonth = (timeOrDate) => {
+  let time = toSafeDate(timeOrDate)
+  let date = new Date(Date.UTC(time.getUTCFullYear(), time.getUTCMonth(), 1))
+  return toUtcTime(date)
+}
+
+export const beginningOfYear = (timeOrDate) => {
+  let time = toSafeDate(timeOrDate)
+  let date = new Date(Date.UTC(time.getUTCFullYear(), 0, 1))
+  return toUtcTime(date)
+}
+
+const resolutionToBucket = {
+  "1": beginningOfDay,
+  "2": beginningOfDay,
+  "3": beginningOfDay,
+  "5": beginningOfWeek,
+  "10": beginningOfWeek,
+  "15": beginningOfWeek,
+  "30": beginningOfMonth,
+  "60": beginningOfMonth,
+  "120": beginningOfMonth,
+  "240": beginningOfYear,
+  "360": beginningOfYear,
+  "720": beginningOfYear,
+  "D": beginningOfYear,
+  "1D": beginningOfYear,
+}
+
+export const toBucketStart = (date, resolution) => {
+  return resolutionToBucket[resolution](date)
 }
 
 export function candleTime(slotsAgo: number, resolution: String, date: number | Date): number {
