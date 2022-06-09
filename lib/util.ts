@@ -4,6 +4,7 @@ import BigNumber from "bignumber.js";
 import {MarketMap, MarketQuery} from "./types";
 import {crypto} from "./crypto";
 import {base64url} from "rfc4648";
+import moment from "moment";
 
 export const MINUTES = 60;
 export const HOURS = 60 * MINUTES;
@@ -244,58 +245,52 @@ export const toSafeDate = (timeOrDate) => {
   return typeof timeOrDate === "object" ? timeOrDate : new Date(timeOrDate * 1000)
 }
 
-export const toUtcTime = (date) => {
-  return Math.floor(toSafeDate(date).getTime() / 1000)
-}
-
-export const beginningOfDay = (timeOrDate) => {
-  let date = toSafeDate(timeOrDate)
-  date.setUTCHours(0, 0, 0, 0)
-  return toUtcTime(date)
-}
-
-export const beginningOfWeek = (timeOrDate) => {
-  let date = toSafeDate(timeOrDate)
-  const dayOfWeek = date.getUTCDay()
-  const diff = dayOfWeek >= 1 ? dayOfWeek - 1 : 6 - dayOfWeek
-
-  date.setUTCDate(date.getDate() - diff)
-  date.setUTCHours(0, 0, 0, 0)
-
-  return toUtcTime(date)
-}
-
-export const beginningOfMonth = (timeOrDate) => {
-  let time = toSafeDate(timeOrDate)
-  let date = new Date(Date.UTC(time.getUTCFullYear(), time.getUTCMonth(), 1))
-  return toUtcTime(date)
-}
-
-export const beginningOfYear = (timeOrDate) => {
-  let time = toSafeDate(timeOrDate)
-  let date = new Date(Date.UTC(time.getUTCFullYear(), 0, 1))
-  return toUtcTime(date)
-}
-
-const resolutionToBucket = {
-  "1": beginningOfDay,
-  "2": beginningOfDay,
-  "3": beginningOfDay,
-  "5": beginningOfWeek,
-  "10": beginningOfWeek,
-  "15": beginningOfWeek,
-  "30": beginningOfMonth,
-  "60": beginningOfMonth,
-  "120": beginningOfMonth,
-  "240": beginningOfYear,
-  "360": beginningOfYear,
-  "720": beginningOfYear,
-  "D": beginningOfYear,
-  "1D": beginningOfYear,
+export const toBucketEnd = (date, resolution) => {
+  date = moment.utc(toSafeDate(date))
+  switch(resolution) {
+    case "1":
+    case "2":
+    case "3":
+      return date.endOf("day").unix()
+    case "5":
+    case "10":
+    case "15":
+      return date.endOf("week").unix()
+    case "30":
+    case "60":
+    case "120":
+      return date.endOf("month").unix()
+    case "240":
+    case "360":
+    case "720":
+    case "D":
+    case "1D":
+      return date.endOf("year").unix()
+  }
 }
 
 export const toBucketStart = (date, resolution) => {
-  return resolutionToBucket[resolution](date)
+  date = moment.utc(toSafeDate(date))
+  switch(resolution) {
+    case "1":
+    case "2":
+    case "3":
+      return date.startOf("day").unix()
+    case "5":
+    case "10":
+    case "15":
+      return date.startOf("week").unix()
+    case "30":
+    case "60":
+    case "120":
+      return date.startOf("month").unix()
+    case "240":
+    case "360":
+    case "720":
+    case "D":
+    case "1D":
+      return date.startOf("year").unix()
+  }
 }
 
 export function candleTime(slotsAgo: number, resolution: String, date: number | Date): number {

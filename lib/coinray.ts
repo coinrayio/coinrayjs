@@ -9,7 +9,7 @@ import {
   parseJWT,
   safeBigNumber,
   safeTime,
-  signHMAC, toBucketStart
+  signHMAC, toBucketEnd, toBucketStart, toSafeDate
 } from "./util";
 
 import {
@@ -541,7 +541,7 @@ export default class Coinray {
     let minStart = toBucketStart(candleTime(10, resolution, end), resolution)
 
     let currentStart = Math.min(toBucketStart(end, resolution), minStart)
-    let currentEnd = end
+    let currentEnd = toBucketEnd(end, resolution)
 
     let requests = []
 
