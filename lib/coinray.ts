@@ -541,8 +541,8 @@ export default class Coinray {
     let recentCandleTime = candleTime(1, "1D", candleTime(10, resolution, minDate))
 
     let requests = []
-    let currentStart = end
-    if (recentCandleTime > end) {
+    let currentStart
+    if (recentCandleTime < end) {
       requests.push(this.get("candles", {
         version: "v1",
         params: {
@@ -553,6 +553,8 @@ export default class Coinray {
         }
       }))
       currentStart = recentCandleTime
+    } else {
+      currentStart = candleTime(0, "1D", end)
     }
 
     while (currentStart >= start) {
