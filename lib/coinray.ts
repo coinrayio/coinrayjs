@@ -546,7 +546,9 @@ export default class Coinray {
     let requests = []
 
     let firstCandle = toBucketStart(Math.min(start, minStart), resolution)
-    while (currentStart >= firstCandle) {
+    let index = 0
+    while (index < 10 && currentStart >= firstCandle) {
+      index += 1
       requests.push(this.get("candles", {
         version: "v1",
         params: {
@@ -558,6 +560,10 @@ export default class Coinray {
       }))
       currentEnd = currentStart - 1
       currentStart = toBucketStart(currentStart - 1, resolution)
+    }
+
+    if (index > 9) {
+      console.error("Too many candles requested", currentStart, firstCandle)
     }
 
     // Fetch data from the websocket snapshot to merge the highs and lows
