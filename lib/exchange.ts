@@ -52,6 +52,8 @@ export default class Exchange {
   public readonly supportedOrderTypes: OrderType[] | null;
   public readonly baseCurrencyDominance: object | null;
   public readonly apiKeySettings: ApiKeySettings;
+  public readonly apiEndpoint: string;
+  public readonly websocketEndpoint: string;
 
   public markets: MarketMap;
   public exchangeSymbols: {};
@@ -77,6 +79,9 @@ export default class Exchange {
     checkString(d.usdVolume, false, "usdVolume");
     checkNumber(d.totalMarkets, false, "totalMarkets");
     checkArray(d.quoteCurrencies, "quoteCurrencies");
+    checkString(d.apiEndpoint,  true, "apiEndpoint");
+    checkString(d.websocketEndpoint, true, "websocketEndpoint");
+
     if (d.quoteCurrencies) {
       for (let i = 0; i < d.quoteCurrencies.length; i++) {
         checkString(d.quoteCurrencies[i], false, "quoteCurrencies" + "[" + i + "]");
@@ -94,7 +99,6 @@ export default class Exchange {
     if (d.supportedResolutions === undefined) {
       d.supportedResolutions = null;
     }
-
     return new Exchange(d, api);
   }
 
@@ -119,6 +123,8 @@ export default class Exchange {
     this.apiKeySettings = d.apiKeySettings;
     this.markets = {};
     this.exchangeSymbols = {}
+    this.apiEndpoint = d.apiEndpoint || api.config.apiEndpoint
+    this.websocketEndpoint = d.websocketEndpoint || api.config.websocketEndpoint
   }
 
   clone() {

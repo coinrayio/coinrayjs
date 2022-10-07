@@ -67,6 +67,7 @@ export default class Coinray {
   private _onError?: (event: any) => void;
   private _onOpen?: (event: any) => void;
   private _socket?: Socket;
+  private _sockets: Map<string, Socket>;
   private _transport: any;
 
   private _tickerListeners: any = {};
@@ -93,11 +94,11 @@ export default class Coinray {
   private _timeOffsetInterval: any;
 
   constructor(token: string, {apiEndpoint, orderEndpoint, websocketEndpoint} =
-      {
-        apiEndpoint: "https://api.coinray.eu",
-        orderEndpoint: "https://api.coinray.eu",
-        websocketEndpoint: "wss://ws.coinray.eu/v1",
-      }) {
+  {
+    apiEndpoint: "https://api.coinray.eu",
+    orderEndpoint: "https://api.coinray.eu",
+    websocketEndpoint: "wss://ws.coinray.eu/v1",
+  }) {
     this._token = token;
     this._nonceOffset = 0;
     this._timeOffset = 0;
@@ -467,7 +468,7 @@ export default class Coinray {
 
       if (this._orderbookListeners[coinraySymbol].length === 0) {
         this.getChannel("orderbooks")
-            .push("unsubscribe", {symbols: coinraySymbol}, 5000)
+          .push("unsubscribe", {symbols: coinraySymbol}, 5000)
       }
     } else {
       this._orderbookSnapshots[coinraySymbol] = {minSeq: 0, maxSeq: 0, bids: {}, asks: {}}
@@ -598,11 +599,11 @@ export default class Coinray {
     }, []).sort((left, right) => left.time - right.time)
   };
 
-  fetchExchanges = async (): Promise<Array<Exchange>> => {
+  fetchExchanges = async (callback: (payload: any) => Exchange): Promise<Array<Exchange>> => {
     const {result: {exchanges}} = await this.get("exchanges", {
       version: "v1",
     });
-    return exchanges.map((exhange) => Exchange.Create(exhange, this))
+    return exchanges.map(callback)
   };
 
   fetchMarkets = async (exchange: Exchange): Promise<Array<Market>> => {
@@ -619,27 +620,6 @@ export default class Coinray {
         return new Market(market, this, exchange)
       }
     })
-  };
-
-  fetchTrades = async (coinraySymbol): Promise<Trade[]> => {
-    const {result: trades} = await this.get("trades", {
-      version: "v1",
-      params: {
-        symbol: coinraySymbol
-      }
-    });
-    return trades.map(Coinray._parseTrade)
-  };
-
-  fetchOrderBook = async (coinraySymbol): Promise<OrderBook> => {
-    const {result: {seq, asks, bids}} = await this.get("order_book", {
-      version: "v1",
-      params: {
-        symbol: coinraySymbol
-      }
-    });
-
-    return Coinray._parseOrderBookSnapshot({seq, asks, bids});
   };
 
   createCredential = async (deviceId: string, password: string) => {

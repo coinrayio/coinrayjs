@@ -5,12 +5,17 @@ jest.setTimeout(30000);
 import Coinray from "../lib";
 import CoinrayCache from "../lib/coinray-cache";
 
-const coinrayToken = "********"
 const coinray = new Coinray(coinrayToken)
+const coinrayToken = ""
 const coinrayCache = new CoinrayCache(coinray)
 
 beforeAll(async () => {
   await coinrayCache.initialize()
+  console.debug(coinrayCache.getExchanges().length)
+})
+afterAll(() => {
+  coinray.destroy()
+  coinrayCache.destroy()
 })
 
 describe("searchMarkets", () => {

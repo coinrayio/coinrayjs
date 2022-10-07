@@ -12,7 +12,6 @@ export default class CurrentMarket extends EventEmitter {
   private coinrayCache: CoinrayCache;
   public coinraySymbol: string;
   private timeouts: {};
-  private api: Coinray;
   private orderBook: { minSeq: undefined | number, maxSeq: undefined | number, asks: {}; bids: {} };
   private trades: any[];
   private tradesStarted: boolean;
@@ -20,9 +19,8 @@ export default class CurrentMarket extends EventEmitter {
   private tradesDelayed: boolean;
   private maxTrades: number;
 
-  constructor(api: Coinray, coinrayCache: CoinrayCache, options = {} as any) {
+  constructor(coinrayCache: CoinrayCache, options = {} as any) {
     super();
-    this.api = api;
     this.coinrayCache = coinrayCache;
     this.timeouts = {};
     this.maxTrades = options.maxTrades || 100;
@@ -143,14 +141,14 @@ export default class CurrentMarket extends EventEmitter {
 
   startOrderBook = () => {
     if (this.coinraySymbol && !this.orderBookStarted && this.hasListeners("orderBookUpdated")) {
-      this.api.subscribeOrderBook({coinraySymbol: this.coinraySymbol}, this.handleOrderBook);
+      this.coinrayCache.subscribeOrderBook({coinraySymbol: this.coinraySymbol}, this.handleOrderBook);
       this.orderBookStarted = true;
     }
   };
 
   stopOrderBook = () => {
     if (this.coinraySymbol) {
-      this.api.unsubscribeOrderBook({coinraySymbol: this.coinraySymbol}, this.handleOrderBook);
+      this.coinrayCache.unsubscribeOrderBook({coinraySymbol: this.coinraySymbol}, this.handleOrderBook);
     }
     this.orderBook = {
       minSeq: undefined,
@@ -164,7 +162,7 @@ export default class CurrentMarket extends EventEmitter {
 
   handleOrderBook = async ({type, coinraySymbol, orderBook}) => {
     if (this.coinraySymbol !== coinraySymbol) {
-      this.api.unsubscribeOrderBook({coinraySymbol}, this.handleOrderBook);
+      this.coinrayCache.unsubscribeOrderBook({coinraySymbol}, this.handleOrderBook);
       return
     }
 
@@ -224,14 +222,14 @@ export default class CurrentMarket extends EventEmitter {
 
   startTrades = () => {
     if (this.coinraySymbol && !this.tradesStarted && this.hasListeners("tradesUpdated")) {
-      this.api.subscribeTrades({coinraySymbol: this.coinraySymbol}, this.handleTrades);
+      this.coinrayCache.subscribeTrades({coinraySymbol: this.coinraySymbol}, this.handleTrades);
       this.tradesStarted = true;
     }
   };
 
   stopTrades = () => {
     if (this.coinraySymbol) {
-      this.api.unsubscribeTrades({coinraySymbol: this.coinraySymbol}, this.handleTrades);
+      this.coinrayCache.unsubscribeTrades({coinraySymbol: this.coinraySymbol}, this.handleTrades);
     }
     this.trades = [];
     this.tradesStarted = false;
@@ -239,7 +237,7 @@ export default class CurrentMarket extends EventEmitter {
 
   handleTrades = ({type, coinraySymbol, trades}) => {
     if (this.coinraySymbol !== coinraySymbol) {
-      this.api.unsubscribeTrades({coinraySymbol}, this.handleTrades);
+      this.coinrayCache.unsubscribeTrades({coinraySymbol}, this.handleTrades);
       return
     }
 
