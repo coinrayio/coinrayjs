@@ -43,6 +43,7 @@ export default class Exchange {
   public readonly tradingEnabled: boolean;
   public readonly tradingEnabledFrom: string;
   public readonly isFutures: boolean;
+  public readonly isDex: boolean;
   public readonly logo: string;
   public readonly btcVolume: BigNumber;
   public readonly usdVolume: BigNumber;
@@ -74,6 +75,7 @@ export default class Exchange {
     checkBoolean(d.tradingEnabled, false, "tradingEnabled");
     checkString(d.tradingEnabledFrom, false, "tradingEnabledFrom");
     checkBoolean(d.isFutures, true, "isFutures");
+    checkBoolean(d.isDex, true, "isDex");
     checkString(d.logo, false, "logo");
     checkString(d.btcVolume, false, "btcVolume");
     checkString(d.usdVolume, false, "usdVolume");
@@ -109,6 +111,7 @@ export default class Exchange {
     this.code = d.code;
     this.websocket = d.websocket;
     this.isFutures = !!d.isFutures;
+    this.isDex = !!d.isDex;
     this.active = d.active;
     this.tradingEnabled = d.tradingEnabled;
     this.tradingEnabledFrom = d.tradingEnabledFrom;
@@ -135,6 +138,7 @@ export default class Exchange {
       code: this.code,
       websocket: this.websocket,
       isFutures: this.isFutures,
+      isDex: this.isDex,
       logo: this.logo,
       btcVolume: this.btcVolume,
       usdVolume: this.usdVolume,
