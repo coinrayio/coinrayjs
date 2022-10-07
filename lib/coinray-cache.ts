@@ -19,9 +19,9 @@ export default class CoinrayCache extends EventEmitter {
   private tokenRefreshed: any;
   private _onTokenExpired: () => Promise<string>;
 
-  constructor(rootApi: Coinray, refreshRate = 30 * 1000) {
+  constructor(token: string, config: any, refreshRate = 30 * 1000) {
     super()
-    this.rootApi = rootApi
+    this.rootApi = new Coinray(token, config)
     this.apis = new Map()
     this.exchanges = {}
     this.initialized = false
