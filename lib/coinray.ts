@@ -58,7 +58,7 @@ export default class Coinray {
     orderEndpoint: string;
     websocketEndpoint: string;
   };
-  private _token: string;
+  _token: string;
   private _sessionKey: string;
   private _credential: string;
   private _firstOpen: boolean;
