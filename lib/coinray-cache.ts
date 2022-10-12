@@ -52,18 +52,17 @@ export default class CoinrayCache extends EventEmitter {
       return
     }
 
-    let tokenRefreshed;
     if (this._refreshingToken) {
       return await this._refreshingToken
     } else {
-      this._refreshingToken = new Promise((resolve) => {
-        tokenRefreshed = resolve
-      })
+      this._refreshingToken = this._onTokenExpired()
+      let token = await this._refreshingToken
+      this._refreshingToken = undefined
+      for (const api of this.apis.values()) {
+        api.refreshToken(token)
+      }
+      return token
     }
-
-    let token = await this._onTokenExpired()
-    tokenRefreshed(token)
-    return token
   }
 
   onTokenExpired(callback: () => Promise<string>) {

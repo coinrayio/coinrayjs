@@ -167,6 +167,9 @@ export default class Coinray {
   };
 
   onTokenExpired = (callback: () => Promise<string>) => {
+    if (this._tokenCheckInterval) {
+      clearInterval(this._tokenCheckInterval)
+    }
     this._onTokenExpired = callback;
     this._tokenCheckInterval = setInterval(this.checkToken, 5000);
   };
