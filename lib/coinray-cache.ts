@@ -126,7 +126,22 @@ export default class CoinrayCache extends EventEmitter {
   }
 
   getExchange(exchangeCode): Exchange | undefined {
-    return this.getExchanges()[exchangeCode]
+    return this.getExchanges()[exchangeCode] || Exchange.Create({
+      id: -1,
+      name: exchangeCode,
+      code: exchangeCode,
+      websocket: false,
+      active: false,
+      tradingEnabled: false,
+      tradingEnabledFrom: "",
+      isFutures: false,
+      isDex: false,
+      logo: "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==\n",
+      btcVolume: "0",
+      usdVolume: "0",
+      totalMarkets: 0,
+      quoteCurrencies: [],
+    }, this.rootApi)
   }
 
   refreshMarkets = async (exchangeCode) => {
