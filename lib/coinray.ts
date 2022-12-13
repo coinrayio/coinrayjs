@@ -63,7 +63,7 @@ export default class Coinray {
   private _credential: string;
   private _firstOpen: boolean;
   private _onTokenExpired?: () => Promise<string>;
-  private _tokenCheckInterval: any;
+  private _tokenCheckTimeout: any;
   private _onError?: (event: any) => void;
   private _onOpen?: (event: any) => void;
   private _socket?: Socket;
@@ -91,7 +91,7 @@ export default class Coinray {
   private tradesSubscribed: boolean = false;
   private orderBookSubscribed: boolean = false;
   private _timeOffset: number;
-  private _timeOffsetInterval: any;
+  private _timeOffsetTimeout: any;
 
   constructor(token: string, {apiEndpoint, orderEndpoint, websocketEndpoint} =
   {
@@ -110,7 +110,6 @@ export default class Coinray {
     };
 
     this.loadTimeOffset().then();
-    this._timeOffsetInterval = setInterval(this.loadTimeOffset, 60 * 1000)
   }
 
   authenticateDevice = (credential: string, sessionKey: string) => {
@@ -124,22 +123,19 @@ export default class Coinray {
     this._tickerListeners = {};
     this._channels = {};
 
-    if (this._timeOffsetInterval) {
-      clearInterval(this._timeOffsetInterval)
+    if (this._timeOffsetTimeout) {
+      clearTimeout(this._timeOffsetTimeout)
     }
-    if (this._tokenCheckInterval) {
-      clearInterval(this._tokenCheckInterval)
+    if (this._tokenCheckTimeout) {
+      clearInterval(this._tokenCheckTimeout)
     }
     this.disconnect()
   };
 
-  checkToken = async () => {
+  checkToken = async (loop = true) => {
     if (jwtExpired(this._token)) {
       console.log("Coinray token expired. Can refresh:", !!this._onTokenExpired);
       if (!this._onTokenExpired) {
-        if (this._tokenCheckInterval) {
-          clearInterval(this._tokenCheckInterval)
-        }
         return false
       }
       if (!this._refreshingToken) {
@@ -159,6 +155,9 @@ export default class Coinray {
         return false
       }
     }
+    if (loop) {
+      this._tokenCheckTimeout = setTimeout(this.checkToken, 5000);
+    }
     return true;
   };
 
@@ -167,11 +166,11 @@ export default class Coinray {
   };
 
   onTokenExpired = (callback: () => Promise<string>) => {
-    if (this._tokenCheckInterval) {
-      clearInterval(this._tokenCheckInterval)
+    if (this._tokenCheckTimeout) {
+      clearInterval(this._tokenCheckTimeout)
     }
     this._onTokenExpired = callback;
-    this._tokenCheckInterval = setInterval(this.checkToken, 5000);
+    this._tokenCheckTimeout = setTimeout(this.checkToken, 5000);
   };
 
   refreshToken = (token: string) => {
@@ -193,10 +192,11 @@ export default class Coinray {
   loadTimeOffset = async () => {
     const {result} = await this.get("/coinray/time");
     this._timeOffset = result.time - new Date().getTime();
+    this._timeOffsetTimeout = setTimeout(this.loadTimeOffset, 60 * 1000)
   };
 
   getToken = async () => {
-    const tokenValid = await this.checkToken();
+    const tokenValid = await this.checkToken(false);
     if (tokenValid) {
       return this._token
     } else {

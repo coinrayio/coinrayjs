@@ -101,7 +101,6 @@ export default class CoinrayCache extends EventEmitter {
           this.apis.set(exchange.code, this.rootApi)
         } else {
           let api = new Coinray(this.rootApi._token, exchange);
-          api.onTokenExpired(this.refreshToken)
           this.apis.set(exchange.code, api)
         }
       }
