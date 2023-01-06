@@ -93,6 +93,14 @@ export enum OrderType {
   TAKE_PROFIT_MARKET = "TAKE_PROFIT_MARKET",
 }
 
+export enum IpWhiteList {
+  NONE = "NONE",
+  LIST = "LIST",
+  COMMA = "COMMA",
+  COMMASPACE = "COMMASPACE",
+  SPACE = "SPACE",
+}
+
 export enum MarginType {
   CROSSED = "CROSSED",
   ISOLATED = "ISOLATED"
@@ -105,6 +113,7 @@ export enum OrderStatus {
 }
 
 export enum OrderSide {BUY = "buy", SELL = "sell"}
+
 export enum TimeInForce {GTC = "gtc", FOK = "fok", IOC = "ioc"}
 
 export enum BalanceLimit {QUOTE = "quote", BASE = "base", NONE = "none"}
@@ -156,7 +165,7 @@ export interface CancelOrderParams extends BaseParams {
   orderId: string
 }
 
-export interface AccountTestParams extends BaseParams{
+export interface AccountTestParams extends BaseParams {
   encryptedApiKey: string,
   exchangeCode: string
 }

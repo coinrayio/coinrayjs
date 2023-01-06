@@ -13,7 +13,7 @@ import {
 } from "./util";
 import BigNumber from "bignumber.js";
 import Coinray from "./coinray";
-import {MarketMap, OrderType} from "./types";
+import {IpWhiteList, MarketMap, OrderType} from "./types";
 import _ from "lodash"
 
 export class ExtraSetting {
@@ -27,6 +27,7 @@ export class ApiVersion {
 }
 
 export class ApiKeySettings {
+  public readonly ipWhiteList: IpWhiteList;
   public readonly extraKeys: boolean;
   public readonly passphraseRequired: boolean;
   public readonly extraSettings: ExtraSetting[] | null;
