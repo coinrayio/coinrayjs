@@ -94,11 +94,11 @@ export default class Coinray {
   private _timeOffsetTimeout: any;
 
   constructor(token: string, {apiEndpoint, orderEndpoint, websocketEndpoint} =
-  {
-    apiEndpoint: "https://api.coinray.eu",
-    orderEndpoint: "https://api.coinray.eu",
-    websocketEndpoint: "wss://ws.coinray.eu/v1",
-  }) {
+      {
+        apiEndpoint: "https://api.coinray.eu",
+        orderEndpoint: "https://api.coinray.eu",
+        websocketEndpoint: "wss://ws.coinray.eu/v1",
+      }) {
     this._token = token;
     this._nonceOffset = 0;
     this._timeOffset = 0;
@@ -471,7 +471,7 @@ export default class Coinray {
 
       if (this._orderbookListeners[coinraySymbol].length === 0) {
         this.getChannel("orderbooks")
-          .push("unsubscribe", {symbols: coinraySymbol}, 5000)
+            .push("unsubscribe", {symbols: coinraySymbol}, 5000)
       }
     } else {
       this._orderbookSnapshots[coinraySymbol] = {minSeq: 0, maxSeq: 0, bids: {}, asks: {}}
@@ -815,6 +815,11 @@ export default class Coinray {
       throw error
     }
   };
+
+  async getProxyList() {
+    const {result: {proxies}} = await this.get("credentials/ips");
+    return proxies
+  }
 
   async publicKey() {
     if (!this._publicKey) {
