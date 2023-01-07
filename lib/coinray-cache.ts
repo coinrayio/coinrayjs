@@ -117,6 +117,10 @@ export default class CoinrayCache extends EventEmitter {
     this.dispatchEvent("marketsUpdated")
   };
 
+  getProxyList = async () => {
+    return await this.rootApi.getProxyList()
+  }
+
   getExchanges(): ExchangeMap {
     if (!this.initialized) {
       throw "The cache is not initialized yet"
