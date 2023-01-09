@@ -97,7 +97,7 @@ export enum IpWhiteList {
   NONE = "NONE",
   LIST = "LIST",
   COMMA = "COMMA",
-  COMMASPACE = "COMMASPACE",
+  COMMA_SPACE = "COMMA_SPACE",
   SPACE = "SPACE",
 }
 
