@@ -13,7 +13,7 @@ import {
 } from "./util";
 import BigNumber from "bignumber.js";
 import Coinray from "./coinray";
-import {IpWhiteList, MarketMap, OrderType} from "./types";
+import {ExchangeFeatures, IpWhiteList, MarketMap, OrderType} from "./types";
 import _ from "lodash"
 
 export class ExtraSetting {
@@ -50,7 +50,8 @@ export default class Exchange {
   public readonly usdVolume: BigNumber;
   public readonly totalMarkets: number;
   public readonly quoteCurrencies: string[] | null;
-  public readonly supportedResolutions: string[] | null;
+  public readonly supportedFeatures: string[] | null;
+  public readonly supportedResolutions: ExchangeFeatures[] | null;
   public readonly supportedOrderTypes: OrderType[] | null;
   public readonly baseCurrencyDominance: object | null;
   public readonly apiKeySettings: ApiKeySettings;
@@ -94,6 +95,7 @@ export default class Exchange {
       d.quoteCurrencies = null;
     }
     checkArray(d.supportedResolutions, "supportedResolutions");
+    checkArray(d.supportedFeatures, "supportedFeatures");
     if (d.supportedResolutions) {
       for (let i = 0; i < d.supportedResolutions.length; i++) {
         checkString(d.supportedResolutions[i], false, "supportedResolutions" + "[" + i + "]");
@@ -122,6 +124,7 @@ export default class Exchange {
     this.totalMarkets = safeInteger(d.totalMarkets);
     this.quoteCurrencies = d.quoteCurrencies;
     this.supportedResolutions = d.supportedResolutions;
+    this.supportedFeatures = d.supportedFeatures;
     this.supportedOrderTypes = d.supportedOrderTypes;
     this.baseCurrencyDominance = d.baseCurrencyDominance;
     this.apiKeySettings = d.apiKeySettings;
@@ -146,6 +149,7 @@ export default class Exchange {
       totalMarkets: this.totalMarkets,
       quoteCurrencies: this.quoteCurrencies,
       supportedResolutions: this.supportedResolutions,
+      supportedFeatures: this.supportedFeatures,
       baseCurrencyDominance: this.baseCurrencyDominance,
       apiKeySettings: this.apiKeySettings,
     }, this.api)

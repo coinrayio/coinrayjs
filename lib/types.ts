@@ -93,6 +93,13 @@ export enum OrderType {
   TAKE_PROFIT_MARKET = "TAKE_PROFIT_MARKET",
 }
 
+export enum ExchangeFeatures {
+  HEDGE_MODE = "hedgeMode",
+  ORDER_QUOTE_AMOUNT = "orderQuoteAmount",
+  MARKET_BUY_QUOTE_ONLY = "marketBuyQuoteOnly",
+  UPDATE_LEVERAGE_ONLY_ON_OPEN_POSITIONS = "updateLeverageOnlyOnOpenPositions",
+}
+
 export enum IpWhiteList {
   NONE = "NONE",
   LIST = "LIST",
