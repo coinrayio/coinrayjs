@@ -2,7 +2,7 @@ import BaseOrder from "./base";
 import {BalanceLimit, BaseOrderParams, OrderType} from "../types";
 import BigNumber from "bignumber.js";
 import Coinray from "../coinray";
-import {correctNumberPrecision} from "../util";
+import {correctNumberPrecision, safeBigNumber} from "../util";
 
 
 interface MarketOrderParams extends BaseOrderParams {
@@ -13,6 +13,7 @@ interface MarketOrderParams extends BaseOrderParams {
 export default class MarketOrder extends BaseOrder {
   baseAmount?: BigNumber;
   quoteAmount?: BigNumber;
+  price: BigNumber;
   orderType = OrderType.MARKET;
 
   constraints = () => {
@@ -52,12 +53,18 @@ export default class MarketOrder extends BaseOrder {
 
   updateBaseAmount(baseAmount: BigNumber) {
     this.baseAmount = baseAmount;
+    if (baseAmount) this.quoteAmount = this.price.multipliedBy(this.baseAmount).decimalPlaces(this.precisionQuote > 0 ? this.precisionQuote : 0, BigNumber.ROUND_DOWN);
     this.validate()
   }
 
   updateQuoteAmount(quoteAmount: BigNumber) {
     this.quoteAmount = quoteAmount;
+    if (quoteAmount) this.baseAmount = quoteAmount.dividedBy(this.price).decimalPlaces(this.precisionBase > 0 ? this.precisionBase : 0, BigNumber.ROUND_DOWN);
     this.validate()
+  }
+
+  updatePrice(price: BigNumber) {
+    this.price = price.decimalPlaces(this.precisionPrice);
   }
 
   getOrders(): Array<BaseOrder> {
