@@ -61,7 +61,7 @@
     "jest": "^24.8.0",
     "jose": "^1.28.0",
     "jose-jwe-jws": "^0.2.2",
-    "node-jose": "^1.1.4",
+    "node-jose": "^2.2.0",
     "ts-jest": "^24.0.2",
     "typescript": "^3.5.2",
     "typescript-eslint-parser": "^22.0.0",
