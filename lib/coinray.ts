@@ -816,8 +816,14 @@ export default class Coinray {
     }
   };
 
-  async getProxyList() {
-    const {result: {proxies}} = await this.get("credentials/ips");
+  async getProxyList({exchangeCode, credentialVersion}: { exchangeCode?: string, credentialVersion?: string}) {
+    let params = ""
+    if (exchangeCode) {
+      params += `?exchange=${exchangeCode.toUpperCase()}`
+      params += credentialVersion ? `&version=${credentialVersion}` : ""
+    }
+
+    const {result: {proxies}} = await this.get("credentials/ips" + params)
     return proxies
   }
 

@@ -117,8 +117,8 @@ export default class CoinrayCache extends EventEmitter {
     this.dispatchEvent("marketsUpdated")
   };
 
-  getProxyList = async () => {
-    return await this.rootApi.getProxyList()
+  getProxyList = async (params = {}) => {
+    return await this.rootApi.getProxyList(params)
   }
 
   getExchanges(): ExchangeMap {
