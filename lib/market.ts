@@ -14,11 +14,12 @@ import {
 } from "./util";
 import Coinray from "./coinray";
 import Exchange from "./exchange";
+import {OrderType} from "./types";
 
 let obj: any = null;
 
 export default class Market {
-  public getExchange : () => Exchange
+  public getExchange: () => Exchange
   public readonly api: Coinray;
   public readonly id: number;
   public readonly coinraySymbol: string;
@@ -52,12 +53,13 @@ export default class Market {
   public readonly quoteToUsd: BigNumber;
   public readonly status: string;
   public readonly note: string;
+  private readonly _supportedOrderTypes: OrderType[] | null;
   public lastPrice?: BigNumber;
   public askPrice: BigNumber;
   public bidPrice: BigNumber;
   public readonly updatedAt: string;
 
-  public static Create(d: any, api: Coinray, exchange : Exchange): Market {
+  public static Create(d: any, api: Coinray, exchange: Exchange): Market {
     if (d === null || d === undefined) {
       throwNull2NonNull(d);
     } else if (typeof (d) !== 'object') {
@@ -111,7 +113,7 @@ export default class Market {
     return new Market(d, api, exchange);
   }
 
-  constructor(d: any, api: Coinray, exchange : Exchange) {
+  constructor(d: any, api: Coinray, exchange: Exchange) {
     this.getExchange = () => exchange
     this.api = api;
     this.id = d.id;
@@ -150,7 +152,24 @@ export default class Market {
     this.quoteToUsd = safeBigNumber(d.quoteToUsd);
     this.askPrice = safeBigNumber(d.askPrice);
     this.bidPrice = safeBigNumber(d.bidPrice);
+    this._supportedOrderTypes = d.supportedOrderTypes;
     this.updatedAt = d.updatedAt;
+  }
+
+  get tradingDisabled() {
+    return this.status === "INACTIVE"
+  }
+
+  get tradingEnabled() {
+    return !this.tradingDisabled
+  }
+
+  get supportedOrderTypes() {
+    if (this._supportedOrderTypes.length > 0) {
+      return this._supportedOrderTypes
+    } else {
+      return this.getExchange().supportedOrderTypes
+    }
   }
 
   get isFutures() {
