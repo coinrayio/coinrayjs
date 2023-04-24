@@ -1,6 +1,5 @@
 import CoinrayCache from "./coinray-cache";
 import EventEmitter from "./event-emitter";
-import Coinray from "./coinray";
 import _ from "lodash";
 import {OrderBookSide} from "./types";
 import BigNumber from "bignumber.js";
@@ -128,9 +127,12 @@ export default class CurrentMarket extends EventEmitter {
   };
 
   unsubscribeMarketUpdates = (callback) => {
-    this.unsubscribeOrderBook(this.handleMarketUpdate);
-    this.unsubscribeTrades(this.handleMarketUpdate);
     this.off('marketUpdated', callback)
+
+    if (!this.hasListeners("marketUpdated")) {
+      this.unsubscribeOrderBook(this.handleMarketUpdate);
+      this.unsubscribeTrades(this.handleMarketUpdate);
+    }
   };
 
   subscribeOrderBook = (callback) => {
