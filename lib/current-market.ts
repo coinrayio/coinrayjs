@@ -142,7 +142,7 @@ export default class CurrentMarket extends EventEmitter {
   };
 
   startOrderBook = () => {
-    if (this.coinraySymbol && !this.orderBookStarted && this.hasListeners("orderBookUpdated")) {
+    if (this.coinraySymbol && this.hasListeners("orderBookUpdated")) {
       this.coinrayCache.subscribeOrderBook({coinraySymbol: this.coinraySymbol}, this.handleOrderBook);
       this.orderBookStarted = true;
     }
@@ -223,7 +223,7 @@ export default class CurrentMarket extends EventEmitter {
   };
 
   startTrades = () => {
-    if (this.coinraySymbol && !this.tradesStarted && this.hasListeners("tradesUpdated")) {
+    if (this.coinraySymbol && this.hasListeners("tradesUpdated")) {
       this.coinrayCache.subscribeTrades({coinraySymbol: this.coinraySymbol}, this.handleTrades);
       this.tradesStarted = true;
     }
