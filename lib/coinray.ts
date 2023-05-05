@@ -332,7 +332,9 @@ export default class Coinray {
 
   subscribeTrades = async ({coinraySymbol}: MarketParam, callback: (payload: any) => void) => {
     if (this._tradeListeners[coinraySymbol] && this._tradeListeners[coinraySymbol].length > 0) {
-      this._tradeListeners[coinraySymbol].push(callback);
+      if(!this._tradeListeners[coinraySymbol].includes(callback)){
+        this._tradeListeners[coinraySymbol].push(callback);
+      }
 
       callback({
         type: "trades:snapshot",
@@ -407,7 +409,9 @@ export default class Coinray {
 
   subscribeOrderBook = async ({coinraySymbol}: MarketParam, callback: (payload: any) => void) => {
     if (this._orderbookListeners[coinraySymbol] && this._orderbookListeners[coinraySymbol].length > 0) {
-      this._orderbookListeners[coinraySymbol].push(callback);
+      if(!this._orderbookListeners[coinraySymbol].includes(callback)){
+        this._orderbookListeners[coinraySymbol].push(callback);
+      }
 
       callback({
         type: "orderBook:snapshot",
