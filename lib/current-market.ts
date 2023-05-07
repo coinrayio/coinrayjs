@@ -17,6 +17,11 @@ export default class CurrentMarket extends EventEmitter {
   private orderBookStarted: boolean;
   private tradesDelayed: boolean;
   private maxTrades: number;
+  private prevTickers = {
+    lastPrice: new BigNumber(0),
+    askPrice: new BigNumber(0),
+    bidPrice: new BigNumber(0)
+  }
 
   constructor(coinrayCache: CoinrayCache, options = {} as any) {
     super();
@@ -83,6 +88,21 @@ export default class CurrentMarket extends EventEmitter {
     return callback;
   };
 
+  updatePrevTicker = ({lastPrice, bidPrice, askPrice}: any) => {
+    if (lastPrice) {
+      this.prevTickers.lastPrice = lastPrice
+    }
+
+    if (askPrice) {
+      this.prevTickers.askPrice = askPrice
+    }
+
+    if (bidPrice) {
+      this.prevTickers.bidPrice = bidPrice
+    }
+
+  }
+
   handleMarketUpdate = ({data: {type, coinraySymbol, ...rest}}) => {
     if (this.coinraySymbol !== coinraySymbol) {
       this.unsubscribeOrderBook(this.handleOrderBook);
@@ -100,8 +120,9 @@ export default class CurrentMarket extends EventEmitter {
 
         const market = this.getMarket();
         const lastPrice = trades[0].price;
-        if (!market.lastPrice.eq(lastPrice)) {
+        if (!market.lastPrice.eq(lastPrice) || !this.prevTickers.lastPrice.eq(lastPrice)) {
           market.updateTicker({lastPrice});
+          this.updatePrevTicker({lastPrice})
           this.dispatchEvent('marketUpdated', {market})
         }
         break;
@@ -116,8 +137,11 @@ export default class CurrentMarket extends EventEmitter {
 
         const askPrice = asks[0].price;
         const bidPrice = bids[0].price;
-        if (!market.askPrice.eq(askPrice) || !market.bidPrice.eq(bidPrice)) {
+        const isNew = !market.askPrice.eq(askPrice) || !market.bidPrice.eq(bidPrice)
+        const isNewToMe = !this.prevTickers.askPrice.eq(askPrice) || !this.prevTickers.bidPrice.eq(bidPrice)
+        if (isNew || isNewToMe) {
           market.updateTicker({askPrice, bidPrice});
+          this.updatePrevTicker({askPrice, bidPrice})
           this.dispatchEvent('marketUpdated', {market})
         }
         break;
