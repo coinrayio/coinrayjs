@@ -5,9 +5,9 @@ jest.setTimeout(30000);
 import Coinray from "../lib";
 import CoinrayCache from "../lib/coinray-cache";
 
-const coinray = new Coinray(coinrayToken)
 const coinrayToken = ""
-const coinrayCache = new CoinrayCache(coinray)
+const coinray = new Coinray(coinrayToken)
+const coinrayCache = new CoinrayCache(coinrayToken,{apiEndpoint: "https://api.coinray.eu"})
 
 beforeAll(async () => {
   await coinrayCache.initialize()
