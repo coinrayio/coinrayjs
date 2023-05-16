@@ -1,7 +1,7 @@
 import Coinray from "./coinray";
 import Exchange from "./exchange";
 import {filterMarkets} from "./util";
-import {Candle, CandleParam, CandlesParam, MarketMap, MarketParam, MarketQuery} from "./types";
+import {CacheParams, Candle, CandleParam, CandlesParam, MarketMap, MarketParam, MarketQuery} from "./types";
 import EventEmitter from "./event-emitter"
 
 interface ExchangeMap {
@@ -18,8 +18,10 @@ export default class CoinrayCache extends EventEmitter {
   private _refreshingToken: any;
   private tokenRefreshed: any;
   private _onTokenExpired: () => Promise<string>;
+  private readonly onStoreCache
+  private readonly apiCache
 
-  constructor(token: string, config: any, refreshRate = 30 * 1000) {
+  constructor(token: string, config: any, refreshRate = 30 * 1000, cachePrams: CacheParams = undefined) {
     super()
     this.rootApi = new Coinray(token, config)
     this.apis = new Map()
@@ -28,6 +30,9 @@ export default class CoinrayCache extends EventEmitter {
     this.refreshRate = refreshRate
 
     this.rootApi.onTokenExpired(this.refreshToken)
+
+    this.onStoreCache = cachePrams?.onStoreCache
+    this.apiCache = cachePrams?.apiCache
   }
 
   async initialize() {
@@ -74,7 +79,13 @@ export default class CoinrayCache extends EventEmitter {
       clearInterval(this.refreshInterval)
     }
 
-    await this.refreshExchanges()
+    if (this.apiCache) {
+      await this.refreshExchanges(this.apiCache)
+      this.refreshExchanges()
+    }else {
+      await this.refreshExchanges()
+    }
+
 
     this.refreshInterval = setInterval(this.refreshExchanges, this.refreshRate)
   }
@@ -94,8 +105,11 @@ export default class CoinrayCache extends EventEmitter {
     this.initialized = false;
   }
 
-  refreshExchanges = async () => {
+  refreshExchanges = async (apiCache = undefined) => {
+    const newCache = {exchanges: [], markets: {}}
+
     const exchanges = await this.rootApi.fetchExchanges((exchange) => {
+      newCache.exchanges.push(exchange)
       if (!this.apis.has(exchange.code)) {
         if (this.rootApi.config.apiEndpoint === exchange.apiEndpoint) {
           this.apis.set(exchange.code, this.rootApi)
@@ -105,9 +119,13 @@ export default class CoinrayCache extends EventEmitter {
         }
       }
       return Exchange.Create(exchange, this.apis.get(exchange.code))
-    })
+    }, apiCache?.exchanges)
 
-    await Promise.all(exchanges.map((exchange) => exchange.loadMarkets()));
+    const allMarkets = await Promise.all(exchanges.map(async (exchange) => ({
+      [exchange.code]: await exchange.loadMarkets(apiCache?.markets?.[exchange.code])
+    })));
+
+    newCache.markets = allMarkets.reduce((mem, val) => ({...mem, [Object.keys(val)[0]]: Object.values(val)[0]}), [])
 
     this.exchanges = exchanges.reduce((mem, exchange) => {
       mem[exchange.code] = exchange;
@@ -115,6 +133,8 @@ export default class CoinrayCache extends EventEmitter {
     }, {});
 
     this.dispatchEvent("marketsUpdated")
+
+    if (!apiCache && this.onStoreCache) this.onStoreCache(newCache)
   };
 
   getProxyList = async (params = {}) => {

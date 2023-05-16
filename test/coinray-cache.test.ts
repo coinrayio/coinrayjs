@@ -1,17 +1,18 @@
 "use strict"
 
-jest.setTimeout(30000);
-
+import fs from "fs";
 import Coinray from "../lib";
 import CoinrayCache from "../lib/coinray-cache";
 
+jest.setTimeout(30000);
+
 const coinrayToken = ""
 const coinray = new Coinray(coinrayToken)
-const coinrayCache = new CoinrayCache(coinrayToken,{apiEndpoint: "https://api.coinray.eu"})
+const coinrayCache = new CoinrayCache(coinrayToken, {apiEndpoint: "https://api.coinray.eu"})
 
 beforeAll(async () => {
   await coinrayCache.initialize()
-  console.debug(coinrayCache.getExchanges().length)
+  // console.debug(coinrayCache.getExchanges().length)
 })
 afterAll(() => {
   coinray.destroy()
@@ -77,5 +78,55 @@ describe("searchMarkets", () => {
       })
     expect(hitMarkets.length).toBeGreaterThan(0)
     expect(hitMarkets.length).toEqual([...Object.values(resultMap1), ...Object.values(resultMap2)].length)
+  })
+})
+
+describe("using cache", () => {
+  test("cache is written and used, initialize() is faster", async () => {
+    const EXCHANGES_PATH = "./test/exchanges.json"
+    const onStoreCache = jest.fn(async (apiCache) => {
+      const content = JSON.stringify(apiCache)
+      apiCache.exchanges.forEach(({code}) => {
+        expect(apiCache.markets[code].length).toBeGreaterThan(0)
+      })
+
+      try {
+        fs.writeFileSync(EXCHANGES_PATH, content)
+        // console.log("Coinray initialized! Data was written to:", EXCHANGES_PATH)
+      } catch (err) {
+        console.error(err)
+      }
+    })
+
+    const readCache = () => fs.existsSync(EXCHANGES_PATH) ? JSON.parse(fs.readFileSync(EXCHANGES_PATH, "utf8")) : undefined
+
+    let start
+
+    const coinrayCache1 = new CoinrayCache(coinrayToken, {apiEndpoint: "https://api.coinray.eu"}, undefined, {
+      apiCache: undefined,
+      onStoreCache
+    })
+    start = Date.now()
+    await coinrayCache1.initialize()
+    const initDurationNoCache = Date.now() - start
+
+    let apiCache = readCache()
+    expect(apiCache.exchanges.length).toBeGreaterThan(0)
+    expect(Object.keys(apiCache.markets).length).toBeGreaterThan(0)
+    expect(onStoreCache.mock.calls.length).toEqual(1)
+
+    const coinrayCache2 = new CoinrayCache(coinrayToken, {apiEndpoint: "https://api.coinray.eu"}, undefined, {
+      apiCache,
+      onStoreCache
+    })
+    start = Date.now()
+    await coinrayCache2.initialize()
+    const initDurationCached = Date.now() - start
+
+    expect(Object.keys(coinrayCache2.getExchanges()).length).toBeGreaterThan(0)
+    // initDurationCached will probably be less than /2, but a 2x should be a reliable test
+    expect(initDurationCached).toBeLessThan(initDurationNoCache / 2)
+    // a 2nd onStoreCache call IS done, but not awaited
+    expect(onStoreCache.mock.calls.length).toEqual(1)
   })
 })

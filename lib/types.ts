@@ -214,3 +214,17 @@ export interface MarketBalance {
   base: Balance,
   quote: Balance
 }
+
+export interface ApiCache {
+  exchanges?: Array<object>,
+  markets: {
+    [key: string]: Array<object>
+  }
+}
+
+export interface CacheParams {
+  apiCache: ApiCache,
+  onStoreCache: {
+    (apiCache: object): void;
+  }
+}
