@@ -62,3 +62,4 @@ ehthumbs.db
 lib/**/*.js
 test/kraken-balance.test.ts
 test.js
+test/exchanges.json

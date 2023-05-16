@@ -15,6 +15,7 @@ import BigNumber from "bignumber.js";
 import Coinray from "./coinray";
 import {ExchangeFeatures, IpWhiteList, MarketMap, OrderType} from "./types";
 import _ from "lodash"
+import Market from "./market";
 
 export class ExtraSetting {
   public readonly key: string;
@@ -155,13 +156,21 @@ export default class Exchange {
     }, this.api)
   }
 
-  async loadMarkets() {
-    const markets = await this.api.fetchMarkets(this);
+  async loadMarkets(apiCache = undefined): Promise<Array<object>> {
+    const marketsData = await this.api.fetchMarkets(this, apiCache)
+    const markets = marketsData.map((market) => {
+      try {
+        return Market.Create(market, this.api, this)
+      } catch (error) {
+        return new Market(market, this.api, this)
+      }
+    })
 
     if (markets.length > 0) {
       this.markets = _.keyBy(markets, "coinraySymbol");
       this.exchangeSymbols = _.keyBy(markets, "symbol");
     }
+    return marketsData
   }
 
   getBaseCurrencyDominance(baseCurrency) {

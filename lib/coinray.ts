@@ -1,7 +1,8 @@
 import axios, {AxiosRequestConfig, Method} from "axios";
 import {Channel, Socket} from "phoenix";
 import {
-  camelize, candleTime,
+  camelize,
+  candleTime,
   createJWT,
   encryptPayload,
   jwkToPublicKey,
@@ -9,7 +10,9 @@ import {
   parseJWT,
   safeBigNumber,
   safeTime,
-  signHMAC, toBucketEnd, toBucketStart, toSafeDate
+  signHMAC,
+  toBucketEnd,
+  toBucketStart
 } from "./util";
 
 import {
@@ -28,7 +31,6 @@ import {
   Trade,
   UpdateOrderParams,
 } from "./types";
-import Market from "./market";
 import Exchange from "./exchange";
 import BigNumber from "bignumber.js";
 import _ from "lodash";
@@ -606,27 +608,27 @@ export default class Coinray {
     }, []).sort((left, right) => left.time - right.time)
   };
 
-  fetchExchanges = async (callback: (payload: any) => Exchange): Promise<Array<Exchange>> => {
-    const {result: {exchanges}} = await this.get("exchanges", {
-      version: "v1",
-    });
+  fetchExchanges = async (callback: (payload: any) => Exchange, cachedExchanges): Promise<Array<Exchange>> => {
+    let exchanges = cachedExchanges
+    if (!exchanges) {
+      ({result: {exchanges}} = await this.get("exchanges", {
+        version: "v1",
+      }))
+    }
     return exchanges.map(callback)
   };
 
-  fetchMarkets = async (exchange: Exchange): Promise<Array<Market>> => {
-    const {result: {markets}} = await this.get("markets", {
-      version: "v1",
-      params: {
-        exchange: exchange.code
-      }
-    });
-    return markets.map((market) => {
-      try {
-        return Market.Create(market, this, exchange)
-      } catch (error) {
-        return new Market(market, this, exchange)
-      }
-    })
+  fetchMarkets = async (exchange: Exchange, cachedMarkets): Promise<Array<object>> => {
+    let markets = cachedMarkets
+    if (!markets) {
+      ({result: {markets}} = await this.get("markets", {
+        version: "v1",
+        params: {
+          exchange: exchange.code
+        }
+      }))
+    }
+    return markets
   };
 
   createCredential = async (deviceId: string, password: string) => {
