@@ -41,7 +41,9 @@ export default class Market {
   public readonly precisionQuote: number;
   public readonly precisionPrice: number;
   public readonly minBase: number;
+  public readonly maxBase: BigNumber;
   public readonly minQuote: number;
+  public readonly maxQuote: BigNumber;
   public readonly minTrade?: BigNumber;
   public readonly maxTrade?: BigNumber;
   public readonly makerFee: number;
@@ -91,6 +93,8 @@ export default class Market {
     checkNumber(d.minBase, true, "minBase");
     checkNumber(d.precisionQuote, false, "precisionQuote");
     checkNumber(d.minQuote, true, "minQuote");
+    checkBigNumber(d.maxBase, true, "maxBase");
+    checkBigNumber(d.maxQuote, true, "maxQuote");
     checkBigNumber(d.minTrade, false, "minTrade");
     checkNumber(d.maxTrade, true, "maxTrade");
     if (d.maxTrade === undefined) {
@@ -140,6 +144,8 @@ export default class Market {
     this.minQuote = d.minQuote;
     this.precisionBase = d.precisionBase;
     this.minBase = d.minBase;
+    this.maxBase = safeBigNumber(d.maxBase);
+    this.maxQuote = safeBigNumber(d.maxQuote);
     this.minTrade = safeBigNumber(d.minTrade);
     this.maxTrade = safeBigNumber(d.maxTrade);
     this.makerFee = safeFloat(d.makerFee);
