@@ -27,6 +27,7 @@ export default class Market {
   public readonly symbolAlt: string;
   public readonly quoteCurrency: string;
   public readonly underlyingQuoteCurrency: string;
+  public readonly baseLogoUrl: string;
   public readonly baseCurrency: string;
   public readonly exchangeCode: string;
   public readonly volume: BigNumber;
@@ -75,6 +76,7 @@ export default class Market {
     checkString(d.symbolAlt, false, "symbolAlt");
     checkString(d.quoteCurrency, false, "quoteCurrency");
     checkString(d.underlyingQuoteCurrency, false, "underlyingQuoteCurrency");
+    checkString(d.baseLogoUrl, true, "baseLogoUrl");
     checkString(d.baseCurrency, false, "baseCurrency");
     checkString(d.exchangeCode, false, "exchangeCode");
     checkString(d.status || "", false, "status");
@@ -126,6 +128,7 @@ export default class Market {
     this.symbolAlt = d.symbolAlt;
     this.quoteCurrency = d.quoteCurrency.toUpperCase();
     this.underlyingQuoteCurrency = d.underlyingQuoteCurrency.toUpperCase();
+    this.baseLogoUrl = d.baseLogoUrl;
     this.baseCurrency = d.baseCurrency.toUpperCase();
     this.exchangeCode = d.exchangeCode;
     this.status = d.status;
