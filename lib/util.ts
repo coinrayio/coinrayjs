@@ -201,6 +201,20 @@ export function safeTime(d: string | number): Date {
 
 export function resolutionToDuration(resolution: String): number {
   switch (resolution.toString().toUpperCase()) {
+    case "1S":
+      return 1
+    case "2S":
+      return 2
+    case "3S":
+      return 3
+    case "5S":
+      return 5
+    case "10S":
+      return 10
+    case "15S":
+      return 15
+    case "30S":
+      return 30
     case "1":
       return MINUTES
     case "2":
@@ -247,7 +261,7 @@ export const toSafeDate = (timeOrDate) => {
 
 export const toBucketEnd = (date, resolution) => {
   date = moment.utc(toSafeDate(date))
-  switch(resolution) {
+  switch (resolution) {
     case "1":
     case "2":
     case "3":
@@ -271,7 +285,7 @@ export const toBucketEnd = (date, resolution) => {
 
 export const toBucketStart = (date, resolution) => {
   date = moment.utc(toSafeDate(date))
-  switch(resolution) {
+  switch (resolution) {
     case "1":
     case "2":
     case "3":

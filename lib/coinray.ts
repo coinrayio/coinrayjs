@@ -334,7 +334,7 @@ export default class Coinray {
 
   subscribeTrades = async ({coinraySymbol}: MarketParam, callback: (payload: any) => void) => {
     if (this._tradeListeners[coinraySymbol] && this._tradeListeners[coinraySymbol].length > 0) {
-      if(!this._tradeListeners[coinraySymbol].includes(callback)){
+      if (!this._tradeListeners[coinraySymbol].includes(callback)) {
         this._tradeListeners[coinraySymbol].push(callback);
       }
 
@@ -411,7 +411,7 @@ export default class Coinray {
 
   subscribeOrderBook = async ({coinraySymbol}: MarketParam, callback: (payload: any) => void) => {
     if (this._orderbookListeners[coinraySymbol] && this._orderbookListeners[coinraySymbol].length > 0) {
-      if(!this._orderbookListeners[coinraySymbol].includes(callback)){
+      if (!this._orderbookListeners[coinraySymbol].includes(callback)) {
         this._orderbookListeners[coinraySymbol].push(callback);
       }
 
@@ -556,6 +556,24 @@ export default class Coinray {
     let requests = []
 
     let firstCandle = toBucketStart(Math.min(start, minStart), resolution)
+    const subscribe = new Promise(resolve => {
+      let timeout = setTimeout(() => resolve([]), 1000)
+      const onSnapshot = ({previousCandles}) => {
+        clearTimeout(timeout)
+        this.unsubscribeCandles({coinraySymbol, resolution}, onSnapshot)
+        resolve(previousCandles)
+      }
+      this.subscribeCandles({coinraySymbol, resolution}, onSnapshot)
+    })
+
+    if (resolution.endsWith("S")) {
+      const snapshot = await subscribe as Candle[]
+      return snapshot.filter((candle) => {
+        let time = candle.time.getTime() / 1000
+        return time >= start && time <= end
+      })
+    }
+
     let index = 0
     while (index < 10 && currentStart >= firstCandle) {
       index += 1
@@ -578,15 +596,6 @@ export default class Coinray {
 
     // Fetch data from the websocket snapshot to merge the highs and lows
     if (useWebSocket && end > minDate.getTime() / 1000) {
-      const subscribe = new Promise(resolve => {
-        let timeout = setTimeout(() => resolve([]), 1000)
-        const onSnapshot = ({previousCandles}) => {
-          clearTimeout(timeout)
-          this.unsubscribeCandles({coinraySymbol, resolution}, onSnapshot)
-          resolve(previousCandles)
-        }
-        this.subscribeCandles({coinraySymbol, resolution}, onSnapshot)
-      })
       const snapshot = await subscribe as Candle[]
       indexedSnapshot = _.keyBy(snapshot, ({time}) => time.getTime())
     }
@@ -822,7 +831,7 @@ export default class Coinray {
     }
   };
 
-  async getProxyList({exchangeCode, credentialVersion}: { exchangeCode?: string, credentialVersion?: string}) {
+  async getProxyList({exchangeCode, credentialVersion}: { exchangeCode?: string, credentialVersion?: string }) {
     let params = ""
     if (exchangeCode) {
       params += `?exchange=${exchangeCode.toUpperCase()}`
@@ -1129,6 +1138,7 @@ export default class Coinray {
         close,
         baseVolume,
         quoteVolume,
+        numTrades: currentCandleTrades.length
       }
     })
   };
@@ -1156,6 +1166,8 @@ export default class Coinray {
       return parseInt(resolution) * 24 * 60 * 60 * 1000
     } else if (resolution.indexOf("D") > 0) {
       return parseInt(resolution) * 24 * 60 * 60 * 1000
+    } else if (resolution.indexOf("S") > 0) {
+      return parseInt(resolution) * 1000
     } else if (resolution === "D") {
       return 24 * 60 * 60 * 1000
     } else {
