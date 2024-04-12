@@ -13,6 +13,7 @@ export interface Candle {
   close: BigNumber,
   baseVolume: BigNumber,
   quoteVolume: BigNumber,
+  numTrades: number,
   skipVolume?: Boolean
 }
 

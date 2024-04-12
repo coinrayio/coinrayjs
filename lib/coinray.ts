@@ -81,6 +81,7 @@ export default class Coinray {
   private _candleTradeListeners: any = {};
   private _candleListeners: any = {};
   private _candles: any = {};
+  private _timers: any = {};
 
   private _channels: any = {};
   private _connected: Promise<boolean>;
@@ -521,11 +522,47 @@ export default class Coinray {
       this._candleTradeListeners[coinraySymbol] = {[candleId]: candleCallback};
     }
 
-    this._candles[candleId] = lastCandle || {time: 0};
+    this._candles[candleId] = lastCandle || {time: new Date(0)};
     await this.subscribeTrades({coinraySymbol}, candleCallback);
+
+    this.startNewCandleTimer({candleId, resolution, coinraySymbol})
 
     return callback
   };
+
+  startNewCandleTimer = ({candleId, resolution, coinraySymbol}) => {
+    if (this._timers[candleId]) {
+      clearTimeout(this._timers[candleId])
+    }
+
+    let secondsToNextBucked = candleTime(0, resolution, new Date()) - new Date().getTime() / 1000
+    const callbacks = Object.values(this._candleListeners[candleId]) as [];
+
+    this._timers[candleId] = setTimeout(() => {
+      let currentBucket = candleTime(1, resolution, new Date()) * 1000
+      let oldCandle = this._candles[candleId]
+      if (currentBucket > this._candles[candleId].time.getTime()) {
+        this._candles[candleId] = {
+          time: new Date(currentBucket),
+          open: oldCandle.close,
+          high: oldCandle.close,
+          low: oldCandle.close,
+          close: oldCandle.close,
+          baseVolume: new BigNumber(0),
+          quoteVolume: new BigNumber(0),
+          numTrades: 0,
+        }
+
+        callbacks.map((callback: (payload: any) => void) => callback({
+          coinraySymbol,
+          resolution,
+          candle: this._candles[candleId],
+          previousCandles: []
+        }))
+      }
+      this.startNewCandleTimer({candleId, resolution, coinraySymbol})
+    }, secondsToNextBucked * 1000)
+  }
 
   unsubscribeCandles = ({coinraySymbol, resolution}: CandleParam, callback?: (payload: any) => void) => {
     const candleId = `${coinraySymbol}-${resolution}`;
@@ -538,6 +575,10 @@ export default class Coinray {
 
     if (this._candleListeners[candleId].length === 0) {
       this.unsubscribeTrades({coinraySymbol}, this._candleTradeListeners[coinraySymbol][candleId]);
+      if (this._timers[candleId]) {
+        clearTimeout(this._timers[candleId])
+        delete this._timers[candleId]
+      }
       delete this._candles[candleId];
       delete this._candleTradeListeners[coinraySymbol][candleId];
     }
@@ -1039,6 +1080,7 @@ export default class Coinray {
         close: safeBigNumber(close),
         baseVolume: safeBigNumber(baseVolume),
         quoteVolume: safeBigNumber(quoteVolume),
+        numTrades: 0,
       }
     } else {
       throw new Error("Candle")
@@ -1148,6 +1190,7 @@ export default class Coinray {
       return candle
     }
 
+    currentCandle.numTrades += candle.numTrades;
     currentCandle.high = BigNumber.max(currentCandle.high, candle.high);
     currentCandle.low = BigNumber.min(currentCandle.low, candle.low);
     currentCandle.close = candle.close;
