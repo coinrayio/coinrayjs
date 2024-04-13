@@ -1148,13 +1148,13 @@ export default class Coinray {
     const seconds = Coinray._resolutionToSeconds(resolution);
 
     const groupedTrades = _.groupBy(trades.reverse(), ({time}) => Math.floor(time.getTime() / seconds) * seconds)
-    return _.sortBy(Object.keys(groupedTrades), (date) => parseInt(date)).map((date) => {
+    return _.sortBy(Object.keys(groupedTrades), (date) => parseInt(date)).reduce((result, date) => {
       const currentCandleTrades = groupedTrades[date]
       const currentTime = currentCandleTrades[0].time.getTime()
       const startDate = new Date(currentTime - (currentTime % seconds));
 
       if (currentCandleTrades.length === 0) {
-        return undefined
+        return result
       }
 
       let first = currentCandleTrades[0];
@@ -1162,7 +1162,11 @@ export default class Coinray {
       let baseVolume = new BigNumber(0);
       let quoteVolume = new BigNumber(0);
 
-      open = low = high = close = first.price;
+      if (result.length === 0) {
+        open = low = high = close = first.price;
+      } else {
+        open = low = high = close = result[result.length - 1].close
+      }
 
       currentCandleTrades.reverse().map(({price, quantity}: Trade) => {
         low = BigNumber.min(low, price);
@@ -1172,7 +1176,7 @@ export default class Coinray {
         quoteVolume = quoteVolume.plus(quantity.multipliedBy(price));
       });
 
-      return {
+      result.push({
         time: new Date(startDate),
         open,
         high,
@@ -1181,8 +1185,9 @@ export default class Coinray {
         baseVolume,
         quoteVolume,
         numTrades: currentCandleTrades.length
-      }
-    })
+      })
+      return result
+    }, [])
   };
 
   private static _mergeCandle(currentCandle: Candle, candle: Candle): Candle {

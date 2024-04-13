@@ -173,6 +173,10 @@ export default class Market {
     return !this.tradingDisabled
   }
 
+  get quoteLogoUrl() {
+    return `https://api.coinray.eu/api/v2/explorer/currencies/${this.quoteCurrency}/thumb`
+  }
+
   get supportedOrderTypes() {
     if (this._supportedOrderTypes.length > 0) {
       return this._supportedOrderTypes
