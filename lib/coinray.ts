@@ -541,7 +541,7 @@ export default class Coinray {
     this._timers[candleId] = setTimeout(() => {
       let currentBucket = candleTime(1, resolution, new Date()) * 1000
       let oldCandle = this._candles[candleId]
-      if (currentBucket > this._candles[candleId].time.getTime()) {
+      if (oldCandle && currentBucket > oldCandle.time.getTime()) {
         this._candles[candleId] = {
           time: new Date(currentBucket),
           open: oldCandle.close,
