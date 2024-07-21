@@ -4,6 +4,7 @@ import _ from "lodash";
 import {OrderBookSide} from "./types";
 import BigNumber from "bignumber.js";
 import {MarketNotFoundError} from "./errors";
+import {safeBigNumber} from "./util";
 
 export const TRADES_DELAY_THRESHOLD = 30 * 1000
 
@@ -90,15 +91,15 @@ export default class CurrentMarket extends EventEmitter {
 
   updatePrevTicker = ({lastPrice, bidPrice, askPrice}: any) => {
     if (lastPrice) {
-      this.prevTickers.lastPrice = lastPrice
+      this.prevTickers.lastPrice = safeBigNumber(lastPrice)
     }
 
     if (askPrice) {
-      this.prevTickers.askPrice = askPrice
+      this.prevTickers.askPrice = safeBigNumber(askPrice)
     }
 
     if (bidPrice) {
-      this.prevTickers.bidPrice = bidPrice
+      this.prevTickers.bidPrice = safeBigNumber(bidPrice)
     }
 
   }
@@ -119,7 +120,7 @@ export default class CurrentMarket extends EventEmitter {
         }
 
         const market = this.getMarket();
-        const lastPrice = trades[0].price;
+        const lastPrice = safeBigNumber(trades[0].price);
         if (!market.lastPrice.eq(lastPrice) || !this.prevTickers.lastPrice.eq(lastPrice)) {
           market.updateTicker({lastPrice});
           this.updatePrevTicker({lastPrice})
@@ -204,7 +205,7 @@ export default class CurrentMarket extends EventEmitter {
     const {minSeq, maxSeq, bids, asks} = orderBook;
     const update = (side, updates: OrderBookSide) => {
       _.forEach(updates, (quantity, price) => {
-        if (quantity.gt(0)) {
+        if (quantity > 0) {
           side[price] = {price: new BigNumber(price), quantity}
         } else {
           delete side[price]

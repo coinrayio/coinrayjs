@@ -7,12 +7,12 @@ export interface MarketParam {
 
 export interface Candle {
   time: Date,
-  open: BigNumber,
-  high: BigNumber,
-  low: BigNumber,
-  close: BigNumber,
-  baseVolume: BigNumber,
-  quoteVolume: BigNumber,
+  open: number,
+  high: number,
+  low: number,
+  close: number,
+  baseVolume: number,
+  quoteVolume: number,
   numTrades: number,
   skipVolume?: Boolean
 }
@@ -41,7 +41,7 @@ export interface MarketQuery {
 }
 
 export interface OrderBookSide {
-  [key: string]: BigNumber
+  [key: string]: number
 }
 
 export interface OrderBook {
@@ -54,8 +54,8 @@ export interface OrderBook {
 export interface Trade {
   id: string,
   time: Date,
-  price: BigNumber,
-  quantity: BigNumber,
+  price: number,
+  quantity: number,
   type: "sell" | "buy"
 }
 

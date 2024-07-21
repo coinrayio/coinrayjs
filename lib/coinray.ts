@@ -548,8 +548,8 @@ export default class Coinray {
           high: oldCandle.close,
           low: oldCandle.close,
           close: oldCandle.close,
-          baseVolume: new BigNumber(0),
-          quoteVolume: new BigNumber(0),
+          baseVolume: 0.0,
+          quoteVolume: 0.0,
           numTrades: 0,
         }
 
@@ -1006,7 +1006,7 @@ export default class Coinray {
       } else {
         result = response.data
       }
-      return {result: camelize(result), _headers: response.headers}
+      return {result, _headers: response.headers}
     } catch (error) {
       const {response, request} = error;
       if (response) {
@@ -1039,7 +1039,7 @@ export default class Coinray {
   private static _updateOrderBook(orderBook, {asks, bids, min_seq, max_seq}: any) {
     const update = (side, updates: OrderBookSide) => {
       _.forEach(updates, (quantity, price) => {
-        if (quantity.gt(0)) {
+        if (quantity > 0) {
           side[price] = quantity
         } else {
           delete side[price]
@@ -1058,12 +1058,12 @@ export default class Coinray {
   private static _parseBidAsk(bidAsk) {
     if (Array.isArray(bidAsk)) {
       return bidAsk.reduce((acc, [price, quantity]) => {
-        acc[price] = new BigNumber(quantity);
+        acc[price] = parseFloat(quantity);
         return acc
       }, {});
     } else {
       return Object.keys(bidAsk).reduce((acc, price) => {
-        acc[price] = new BigNumber(bidAsk[price]);
+        acc[price] = parseFloat(bidAsk[price]);
         return acc
       }, {});
     }
@@ -1074,12 +1074,12 @@ export default class Coinray {
       const [time, open, high, low, close, baseVolume, quoteVolume]: any = result;
       return {
         time: safeTime(time),
-        open: safeBigNumber(open),
-        high: safeBigNumber(high),
-        low: safeBigNumber(low),
-        close: safeBigNumber(close),
-        baseVolume: safeBigNumber(baseVolume),
-        quoteVolume: safeBigNumber(quoteVolume),
+        open: parseFloat(open),
+        high: parseFloat(high),
+        low: parseFloat(low),
+        close: parseFloat(close),
+        baseVolume: parseFloat(baseVolume),
+        quoteVolume: parseFloat(quoteVolume),
         numTrades: 0,
       }
     } else {
@@ -1091,8 +1091,8 @@ export default class Coinray {
     return {
       id,
       time: safeTime(time),
-      price: safeBigNumber(price),
-      quantity: safeBigNumber(quantity),
+      price: parseFloat(price),
+      quantity: parseFloat(quantity),
       type: ['1', 'buy'].includes(isBuy.toString()) ? "buy" : "sell"
     }
   }
@@ -1159,8 +1159,8 @@ export default class Coinray {
 
       let first = currentCandleTrades[0];
       let open, low, high, close;
-      let baseVolume = new BigNumber(0);
-      let quoteVolume = new BigNumber(0);
+      let baseVolume = 0.0;
+      let quoteVolume = 0.0;
 
       if (result.length === 0) {
         open = low = high = close = first.price;
@@ -1169,11 +1169,11 @@ export default class Coinray {
       }
 
       currentCandleTrades.reverse().map(({price, quantity}: Trade) => {
-        low = BigNumber.min(low, price);
-        high = BigNumber.max(high, price);
+        low = Math.min(low, price);
+        high = Math.max(high, price);
         close = price;
-        baseVolume = baseVolume.plus(quantity);
-        quoteVolume = quoteVolume.plus(quantity.multipliedBy(price));
+        baseVolume += quantity;
+        quoteVolume += quantity * price;
       });
 
       result.push({
@@ -1196,14 +1196,14 @@ export default class Coinray {
     }
 
     currentCandle.numTrades += candle.numTrades;
-    currentCandle.high = BigNumber.max(currentCandle.high, candle.high);
-    currentCandle.low = BigNumber.min(currentCandle.low, candle.low);
+    currentCandle.high = Math.max(currentCandle.high, candle.high);
+    currentCandle.low = Math.min(currentCandle.low, candle.low);
     currentCandle.close = candle.close;
     if (currentCandle.skipVolume) {
       currentCandle.skipVolume = false
     } else {
-      currentCandle.baseVolume = currentCandle.baseVolume.plus(candle.baseVolume);
-      currentCandle.quoteVolume = currentCandle.quoteVolume.plus(candle.quoteVolume);
+      currentCandle.baseVolume += candle.baseVolume;
+      currentCandle.quoteVolume += candle.quoteVolume;
     }
 
     return currentCandle
