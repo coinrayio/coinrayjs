@@ -14,7 +14,7 @@ export default class CoinrayCache extends EventEmitter {
   private exchanges: ExchangeMap;
   public initialized: boolean;
   public refreshRate: number;
-  private refreshInterval: any;
+  private refreshTimeout: any;
   private _refreshingToken: any;
   private tokenRefreshed: any;
   private _onTokenExpired: () => Promise<string>;
@@ -75,19 +75,23 @@ export default class CoinrayCache extends EventEmitter {
   }
 
   async start() {
-    if (this.refreshInterval) {
-      clearInterval(this.refreshInterval)
+    if (this.refreshTimeout) {
+      clearTimeout(this.refreshTimeout)
     }
 
     if (this.apiCache) {
       await this.refreshExchanges(this.apiCache)
       this.refreshExchanges()
-    }else {
+    } else {
       await this.refreshExchanges()
     }
 
+    this.refreshTimeout = setTimeout(this.refreshExchangeInterval, this.refreshRate)
+  }
 
-    this.refreshInterval = setInterval(this.refreshExchanges, this.refreshRate)
+  refreshExchangeInterval = async () => {
+    await this.refreshExchanges()
+    this.refreshTimeout = setTimeout(this.refreshExchangeInterval, this.refreshRate)
   }
 
   destroy() {
@@ -99,8 +103,8 @@ export default class CoinrayCache extends EventEmitter {
       }
     }
 
-    if (this.refreshInterval) {
-      clearInterval(this.refreshInterval)
+    if (this.refreshTimeout) {
+      clearTimeout(this.refreshTimeout)
     }
     this.initialized = false;
   }
