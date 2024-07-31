@@ -615,10 +615,8 @@ export default class Coinray {
       })
     }
 
-    let index = 0
-    while (index < 10 && currentStart >= firstCandle) {
-      index += 1
-      requests.push(this.get("candles", {
+    while (currentStart >= firstCandle) {
+      requests.push(await this.get("candles", {
         version: "v1",
         params: {
           symbol: coinraySymbol,
@@ -631,19 +629,13 @@ export default class Coinray {
       currentStart = toBucketStart(currentStart - 1, resolution)
     }
 
-    if (index > 9) {
-      console.error("Too many candles requested", currentStart, firstCandle)
-    }
-
     // Fetch data from the websocket snapshot to merge the highs and lows
     if (useWebSocket && end > minDate.getTime() / 1000) {
       const snapshot = await subscribe as Candle[]
       indexedSnapshot = _.keyBy(snapshot, ({time}) => time.getTime())
     }
 
-    let results = await Promise.all(requests)
-
-    return results.reduce((candles, {result}) => {
+    return requests.reduce((candles, {result}) => {
       return candles.concat(result.map(Coinray._parseCandle).filter(({time}) => {
         time = time.getTime() / 1000
         return time >= start && time <= end
