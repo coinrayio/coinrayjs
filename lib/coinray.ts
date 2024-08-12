@@ -1,7 +1,6 @@
 import axios, {AxiosRequestConfig, Method} from "axios";
 import {Channel, Socket} from "phoenix";
 import {
-  camelize,
   candleTime,
   createJWT,
   encryptPayload,
@@ -32,8 +31,7 @@ import {
   UpdateOrderParams,
 } from "./types";
 import Exchange from "./exchange";
-import BigNumber from "bignumber.js";
-import _ from "lodash";
+import _, {chunk} from "lodash";
 import I18n from "./i18n";
 
 const VERSION = require('../package.json').version;
@@ -616,7 +614,7 @@ export default class Coinray {
     }
 
     while (currentStart >= firstCandle) {
-      requests.push(await this.get("candles", {
+      requests.push(this.get("candles", {
         version: "v1",
         params: {
           symbol: coinraySymbol,
@@ -635,7 +633,14 @@ export default class Coinray {
       indexedSnapshot = _.keyBy(snapshot, ({time}) => time.getTime())
     }
 
-    return requests.reduce((candles, {result}) => {
+    const chunkedArray = chunk(requests, 5);
+    const results = [];
+    for (const chunk of chunkedArray) {
+      const chunkResults = await Promise.all(chunk);
+      results.push(...chunkResults); // Add the resolved values to the results array
+    }
+
+    return results.reduce((candles, {result}) => {
       return candles.concat(result.map(Coinray._parseCandle).filter(({time}) => {
         time = time.getTime() / 1000
         return time >= start && time <= end
