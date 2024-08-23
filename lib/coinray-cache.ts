@@ -215,6 +215,11 @@ export default class CoinrayCache extends EventEmitter {
     return api.fetchCandles({coinraySymbol, resolution, start, end, useWebSocket})
   }
 
+  async fetchFirstCandleTime({coinraySymbol, resolution}: CandlesParam): Promise<Date> {
+    const api = this.apiForSymbol(coinraySymbol)
+    return api.fetchFirstCandleTime({coinraySymbol, resolution})
+  }
+
   async subscribeCandles({
                            coinraySymbol,
                            resolution,

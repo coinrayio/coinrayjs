@@ -582,6 +582,16 @@ export default class Coinray {
     }
   };
 
+  fetchFirstCandleTime = async ({coinraySymbol, resolution}): Promise<Date> => {
+    let {result: {startTime}} = await this.get("candles/start-time", {
+      version: "v1",
+      params: {
+        symbol: coinraySymbol, resolution
+      }
+    })
+    return startTime
+  };
+
   fetchCandles = async ({coinraySymbol, resolution, start, end, useWebSocket}: CandlesParam): Promise<Candle[]> => {
     const minDate = new Date()
     minDate.setMinutes(minDate.getMinutes() - 5)
