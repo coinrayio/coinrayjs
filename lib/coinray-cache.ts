@@ -79,18 +79,26 @@ export default class CoinrayCache extends EventEmitter {
       clearTimeout(this.refreshTimeout)
     }
 
-    if (this.apiCache) {
-      await this.refreshExchanges(this.apiCache)
-      this.refreshExchanges()
-    } else {
-      await this.refreshExchanges()
+    try {
+      if (this.apiCache) {
+        await this.refreshExchanges(this.apiCache)
+        this.refreshExchanges()
+      } else {
+        await this.refreshExchanges()
+      }
+    } catch (e) {
+      console.error(e)
     }
 
     this.refreshTimeout = setTimeout(this.refreshExchangeInterval, this.refreshRate)
   }
 
   refreshExchangeInterval = async () => {
-    await this.refreshExchanges()
+    try {
+      await this.refreshExchanges()
+    } catch (e) {
+      console.error(e)
+    }
     this.refreshTimeout = setTimeout(this.refreshExchangeInterval, this.refreshRate)
   }
 

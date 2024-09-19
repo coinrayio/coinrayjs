@@ -134,31 +134,36 @@ export default class Coinray {
   };
 
   checkToken = async (loop = true) => {
-    if (jwtExpired(this._token)) {
-      console.log("Coinray token expired. Can refresh:", !!this._onTokenExpired);
-      if (!this._onTokenExpired) {
-        return false
-      }
-      if (!this._refreshingToken) {
-        this._refreshingToken = this._onTokenExpired();
-      }
-      try {
-        this._token = await this._refreshingToken;
-      } catch (error) {
-        console.log("Coinray token could not be refreshed", error);
+    try {
+      if (jwtExpired(this._token)) {
+        console.log("Coinray token expired. Can refresh:", !!this._onTokenExpired);
+        if (!this._onTokenExpired) {
+          return false
+        }
+        if (!this._refreshingToken) {
+          this._refreshingToken = this._onTokenExpired();
+        }
+        try {
+          this._token = await this._refreshingToken;
+        } catch (error) {
+          console.log("Coinray token could not be refreshed", error);
+          this._refreshingToken = undefined;
+          return false
+        }
         this._refreshingToken = undefined;
-        return false
+        if (!jwtExpired(this._token)) {
+          this.reconnect()
+        } else {
+          return false
+        }
       }
-      this._refreshingToken = undefined;
-      if (!jwtExpired(this._token)) {
-        this.reconnect()
-      } else {
-        return false
-      }
+    } catch (e) {
+      console.error(e)
     }
     if (loop) {
       this._tokenCheckTimeout = setTimeout(this.checkToken, 5000);
     }
+
     return true;
   };
 
@@ -191,8 +196,12 @@ export default class Coinray {
   };
 
   loadTimeOffset = async () => {
-    const {result} = await this.get("/coinray/time");
-    this._timeOffset = result.time - new Date().getTime();
+    try {
+      const {result} = await this.get("/coinray/time");
+      this._timeOffset = result.time - new Date().getTime();
+    } catch (e) {
+      console.error(e)
+    }
     this._timeOffsetTimeout = setTimeout(this.loadTimeOffset, 60 * 1000)
   };
 
