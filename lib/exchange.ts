@@ -42,6 +42,7 @@ export default class Exchange {
   public readonly code: string;
   public readonly websocket: boolean;
   public readonly active: boolean;
+  public readonly aliasedTo: string | null;
   public readonly tradingEnabled: boolean;
   public readonly tradingEnabledFrom: string;
   public readonly isFutures: boolean;
@@ -86,6 +87,7 @@ export default class Exchange {
     checkArray(d.quoteCurrencies, "quoteCurrencies");
     checkString(d.apiEndpoint,  true, "apiEndpoint");
     checkString(d.websocketEndpoint, true, "websocketEndpoint");
+    checkString(d.aliasedTo, true, "aliasedTo");
 
     if (d.quoteCurrencies) {
       for (let i = 0; i < d.quoteCurrencies.length; i++) {
@@ -133,6 +135,7 @@ export default class Exchange {
     this.exchangeSymbols = {}
     this.apiEndpoint = d.apiEndpoint || api.config.apiEndpoint
     this.websocketEndpoint = d.websocketEndpoint || api.config.websocketEndpoint
+    this.aliasedTo = d.aliasedTo
   }
 
   clone() {
@@ -153,6 +156,7 @@ export default class Exchange {
       supportedFeatures: this.supportedFeatures,
       baseCurrencyDominance: this.baseCurrencyDominance,
       apiKeySettings: this.apiKeySettings,
+      aliasedTo: this.aliasedTo
     }, this.api)
   }
 
