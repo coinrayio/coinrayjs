@@ -4,7 +4,7 @@ import BigNumber from "bignumber.js";
 import {MarketMap, MarketQuery} from "./types";
 import {crypto} from "./crypto";
 import {base64url} from "rfc4648";
-import moment from "moment";
+import moment, {Moment} from "moment";
 
 export const MINUTES = 60;
 export const HOURS = 60 * MINUTES;
@@ -305,6 +305,75 @@ export const toBucketStart = (date, resolution) => {
     case "1D":
       return date.startOf("year").unix()
   }
+}
+
+export function resolutionToBucketType(resolution): "day" | "week" | "month" | "year" {
+  switch (resolution) {
+    case "1":
+    case "2":
+    case "3":
+      return "day"
+    case "5":
+    case "10":
+    case "15":
+      return "week"
+    case "30":
+    case "60":
+    case "120":
+      return "month"
+    case "240":
+    case "360":
+    case "720":
+    case "D":
+    case "1D":
+      return "year"
+    default:
+      throw new Error(`Unsupported resolution: ${resolution}`)
+  }
+}
+
+export function getBucketStartDates(startTime: number, endTime: number, bucketType: "day" | "week" | "month" | "year"): Array<Moment> {
+  const dates = []
+  let current = moment.utc(endTime * 1000)
+
+  const toBucketStart = (date) => {
+    switch (bucketType) {
+      case "day":
+        return date.startOf("day")
+      case "week":
+        return date.startOf("isoWeek")
+      case "month":
+        return date.startOf("month")
+      case "year":
+        return date.startOf("year")
+      default:
+        throw new Error(`Unsupported bucketType: ${bucketType}`)
+    }
+  }
+
+  const decrementBucket = (date) => {
+    switch (bucketType) {
+      case "day":
+        return date.subtract(1, "day")
+      case "week":
+        return date.subtract(1, "week")
+      case "month":
+        return date.subtract(1, "month")
+      case "year":
+        return date.subtract(1, "year")
+      default:
+        throw new Error(`Unsupported bucketType: ${bucketType}`)
+    }
+  }
+
+  let bucketStart = toBucketStart(current)
+  const startMoment = toBucketStart(moment.utc(startTime * 1000))
+  while (bucketStart >= startMoment) {
+    dates.push(bucketStart.clone())
+    bucketStart = decrementBucket(bucketStart)
+  }
+
+  return dates
 }
 
 export function candleTime(slotsAgo: number, resolution: String, date: number | Date): number {

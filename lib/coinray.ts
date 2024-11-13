@@ -3,10 +3,10 @@ import {Channel, Socket} from "phoenix";
 import {
   candleTime,
   createJWT,
-  encryptPayload,
+  encryptPayload, getBucketStartDates,
   jwkToPublicKey,
   jwtExpired,
-  parseJWT,
+  parseJWT, resolutionToBucketType,
   safeBigNumber,
   safeTime,
   signHMAC,
@@ -600,6 +600,97 @@ export default class Coinray {
     })
     return startTime
   };
+
+  fetchCandlesV2 = async ({coinraySymbol, resolution, start, end, useWebSocket}: CandlesParam): Promise<Candle[]> => {
+    const subscribe = new Promise(resolve => {
+      let timeout = setTimeout(() => resolve([]), 1000)
+      const onSnapshot = ({previousCandles}) => {
+        clearTimeout(timeout)
+        this.unsubscribeCandles({coinraySymbol, resolution}, onSnapshot)
+        resolve(previousCandles)
+      }
+      this.subscribeCandles({coinraySymbol, resolution}, onSnapshot)
+    })
+
+    if (resolution.endsWith("S")) {
+      const snapshot = await subscribe as Candle[]
+      return snapshot.filter((candle) => {
+        let time = candle.time.getTime() / 1000
+        return time >= start && time <= end
+      })
+    }
+
+    const bucketType = resolutionToBucketType(resolution)
+
+    let requests = getBucketStartDates(start, end, bucketType).map((momentDate) => {
+      const getWeek = function(d) {
+        let date = new Date(d.getTime())
+        date.setHours(0, 0, 0, 0)
+        date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7)
+        let week1 = new Date(date.getFullYear(), 0, 4)
+        return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7)
+      }
+
+      let jsDate = momentDate.toDate()
+      let timeParams: { year: number; month?: number; day?: number; week?: number; }
+      switch (bucketType) {
+        case "day":
+          timeParams = { year: jsDate.getFullYear(), month: jsDate.getMonth() + 1, day: jsDate.getDate() }
+          break
+        case "week":
+          timeParams = { year: jsDate.getFullYear(), week: getWeek(jsDate) }
+          break
+        case "month":
+          timeParams = { year: jsDate.getFullYear(), month: jsDate.getMonth() + 1 }
+          break
+        case "year":
+          timeParams = { year: jsDate.getFullYear() }
+          break
+        default:
+          throw new Error(`Unsupported bucketType: ${bucketType}`)
+      }
+
+      return this.get("candles/history", {
+        apiEndpoint: "https://coinray-cfw.coinray-ws.workers.dev",
+        version: "v2",
+        params: {
+          symbol: coinraySymbol,
+          resolution: resolution,
+          ...timeParams
+        }
+      })
+    })
+
+    let indexedSnapshot = {}
+    const minDate = new Date()
+    minDate.setMinutes(minDate.getMinutes() - 5)
+    // Fetch data from the websocket snapshot to merge the highs and lows
+    if (useWebSocket && end > minDate.getTime() / 1000) {
+      const snapshot = await subscribe as Candle[]
+      indexedSnapshot = _.keyBy(snapshot, ({time}) => time.getTime())
+    }
+
+    const chunkedArray = chunk(requests, 5);
+    const results = [];
+    for (const chunk of chunkedArray) {
+      const chunkResults = await Promise.all(chunk);
+      results.push(...chunkResults); // Add the resolved values to the results array
+    }
+
+    return results.reduce((candles, {result}) => {
+      return candles.concat(result.candles.map(Coinray._parseCandle).filter(({time}) => {
+        time = time.getTime() / 1000
+        return time >= start && time <= end
+      }).map((candle) => {
+        const snapshotCandle = indexedSnapshot[candle.time.getTime()]
+        if (snapshotCandle) {
+          return Coinray._mergeCandle(candle, snapshotCandle)
+        } else {
+          return candle
+        }
+      }));
+    }, []).sort((left, right) => left.time - right.time)
+  }
 
   fetchCandles = async ({coinraySymbol, resolution, start, end, useWebSocket}: CandlesParam): Promise<Candle[]> => {
     const minDate = new Date()
