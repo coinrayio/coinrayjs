@@ -3,10 +3,10 @@ import {Channel, Socket} from "phoenix";
 import {
   candleTime,
   createJWT,
-  encryptPayload,
+  encryptPayload, getBucketStartDates,
   jwkToPublicKey,
   jwtExpired,
-  parseJWT,
+  parseJWT, resolutionToBucketType,
   safeBigNumber,
   safeTime,
   signHMAC,
@@ -602,18 +602,6 @@ export default class Coinray {
   };
 
   fetchCandles = async ({coinraySymbol, resolution, start, end, useWebSocket}: CandlesParam): Promise<Candle[]> => {
-    const minDate = new Date()
-    minDate.setMinutes(minDate.getMinutes() - 5)
-    let indexedSnapshot = {}
-
-    let minStart = toBucketStart(candleTime(10, resolution, end), resolution)
-
-    let currentStart = Math.min(toBucketStart(end, resolution), minStart)
-    let currentEnd = toBucketEnd(end, resolution)
-
-    let requests = []
-
-    let firstCandle = toBucketStart(Math.min(start, minStart), resolution)
     const subscribe = new Promise(resolve => {
       let timeout = setTimeout(() => resolve([]), 1000)
       const onSnapshot = ({previousCandles}) => {
@@ -632,20 +620,55 @@ export default class Coinray {
       })
     }
 
-    while (currentStart >= firstCandle) {
-      requests.push(this.get("candles", {
-        version: "v1",
+    const bucketType = resolutionToBucketType(resolution)
+    const currentTime = new Date().getTime() / 1000
+
+    let requests = getBucketStartDates(start, end, bucketType).map((momentDate) => {
+      const getWeek = function(d) {
+        let date = new Date(d.getTime())
+        date.setHours(0, 0, 0, 0)
+        date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7)
+        let week1 = new Date(date.getFullYear(), 0, 4)
+        return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7)
+      }
+
+      let jsDate = momentDate.toDate()
+      let timeParams: { year: number; month?: number; day?: number; week?: number; }
+      switch (bucketType) {
+        case "day":
+          timeParams = { year: jsDate.getFullYear(), month: jsDate.getMonth() + 1, day: jsDate.getDate() }
+          break
+        case "week":
+          timeParams = { year: jsDate.getFullYear(), week: getWeek(jsDate) }
+          break
+        case "month":
+          timeParams = { year: jsDate.getFullYear(), month: jsDate.getMonth() + 1 }
+          break
+        case "year":
+          timeParams = { year: jsDate.getFullYear() }
+          break
+        default:
+          throw new Error(`Unsupported bucketType: ${bucketType}`)
+      }
+
+      let getParams = {
+        version: "v2",
         params: {
           symbol: coinraySymbol,
           resolution: resolution,
-          start_time: currentStart,
-          end_time: currentEnd
+          ...timeParams
         }
-      }))
-      currentEnd = currentStart - 1
-      currentStart = toBucketStart(currentStart - 1, resolution)
-    }
+      }
+      if (toBucketEnd(jsDate, resolution) >= currentTime) {
+        return this.get("candles/open", getParams) // this goes directly to the backend
+      } else {
+        return this.get("candles/history", getParams) // this goes to the cf worker / cache
+      }
+    })
 
+    let indexedSnapshot = {}
+    const minDate = new Date()
+    minDate.setMinutes(minDate.getMinutes() - 5)
     // Fetch data from the websocket snapshot to merge the highs and lows
     if (useWebSocket && end > minDate.getTime() / 1000) {
       const snapshot = await subscribe as Candle[]
@@ -660,7 +683,7 @@ export default class Coinray {
     }
 
     return results.reduce((candles, {result}) => {
-      return candles.concat(result.map(Coinray._parseCandle).filter(({time}) => {
+      return candles.concat(result.candles.map(Coinray._parseCandle).filter(({time}) => {
         time = time.getTime() / 1000
         return time >= start && time <= end
       }).map((candle) => {
@@ -672,7 +695,7 @@ export default class Coinray {
         }
       }));
     }, []).sort((left, right) => left.time - right.time)
-  };
+  }
 
   fetchExchanges = async (callback: (payload: any) => Exchange, cachedExchanges): Promise<Array<Exchange>> => {
     let exchanges = cachedExchanges
