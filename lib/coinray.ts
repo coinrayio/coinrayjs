@@ -601,7 +601,7 @@ export default class Coinray {
     return startTime
   };
 
-  fetchCandlesV2 = async ({coinraySymbol, resolution, start, end, useWebSocket}: CandlesParam): Promise<Candle[]> => {
+  fetchCandles = async ({coinraySymbol, resolution, start, end, useWebSocket}: CandlesParam): Promise<Candle[]> => {
     const subscribe = new Promise(resolve => {
       let timeout = setTimeout(() => resolve([]), 1000)
       const onSnapshot = ({previousCandles}) => {
@@ -621,6 +621,7 @@ export default class Coinray {
     }
 
     const bucketType = resolutionToBucketType(resolution)
+    const currentTime = new Date().getTime() / 1000
 
     let requests = getBucketStartDates(start, end, bucketType).map((momentDate) => {
       const getWeek = function(d) {
@@ -650,15 +651,19 @@ export default class Coinray {
           throw new Error(`Unsupported bucketType: ${bucketType}`)
       }
 
-      return this.get("candles/history", {
-        apiEndpoint: "https://coinray-cfw.coinray-ws.workers.dev",
+      let getParams = {
         version: "v2",
         params: {
           symbol: coinraySymbol,
           resolution: resolution,
           ...timeParams
         }
-      })
+      }
+      if (toBucketEnd(jsDate, resolution) >= currentTime) {
+        return this.get("candles/open", getParams) // this goes directly to the backend
+      } else {
+        return this.get("candles/history", getParams) // this goes to the cf worker / cache
+      }
     })
 
     let indexedSnapshot = {}
@@ -691,79 +696,6 @@ export default class Coinray {
       }));
     }, []).sort((left, right) => left.time - right.time)
   }
-
-  fetchCandles = async ({coinraySymbol, resolution, start, end, useWebSocket}: CandlesParam): Promise<Candle[]> => {
-    const minDate = new Date()
-    minDate.setMinutes(minDate.getMinutes() - 5)
-    let indexedSnapshot = {}
-
-    let minStart = toBucketStart(candleTime(10, resolution, end), resolution)
-
-    let currentStart = Math.min(toBucketStart(end, resolution), minStart)
-    let currentEnd = toBucketEnd(end, resolution)
-
-    let requests = []
-
-    let firstCandle = toBucketStart(Math.min(start, minStart), resolution)
-    const subscribe = new Promise(resolve => {
-      let timeout = setTimeout(() => resolve([]), 1000)
-      const onSnapshot = ({previousCandles}) => {
-        clearTimeout(timeout)
-        this.unsubscribeCandles({coinraySymbol, resolution}, onSnapshot)
-        resolve(previousCandles)
-      }
-      this.subscribeCandles({coinraySymbol, resolution}, onSnapshot)
-    })
-
-    if (resolution.endsWith("S")) {
-      const snapshot = await subscribe as Candle[]
-      return snapshot.filter((candle) => {
-        let time = candle.time.getTime() / 1000
-        return time >= start && time <= end
-      })
-    }
-
-    while (currentStart >= firstCandle) {
-      requests.push(this.get("candles", {
-        version: "v1",
-        params: {
-          symbol: coinraySymbol,
-          resolution: resolution,
-          start_time: currentStart,
-          end_time: currentEnd
-        }
-      }))
-      currentEnd = currentStart - 1
-      currentStart = toBucketStart(currentStart - 1, resolution)
-    }
-
-    // Fetch data from the websocket snapshot to merge the highs and lows
-    if (useWebSocket && end > minDate.getTime() / 1000) {
-      const snapshot = await subscribe as Candle[]
-      indexedSnapshot = _.keyBy(snapshot, ({time}) => time.getTime())
-    }
-
-    const chunkedArray = chunk(requests, 5);
-    const results = [];
-    for (const chunk of chunkedArray) {
-      const chunkResults = await Promise.all(chunk);
-      results.push(...chunkResults); // Add the resolved values to the results array
-    }
-
-    return results.reduce((candles, {result}) => {
-      return candles.concat(result.map(Coinray._parseCandle).filter(({time}) => {
-        time = time.getTime() / 1000
-        return time >= start && time <= end
-      }).map((candle) => {
-        const snapshotCandle = indexedSnapshot[candle.time.getTime()]
-        if (snapshotCandle) {
-          return Coinray._mergeCandle(candle, snapshotCandle)
-        } else {
-          return candle
-        }
-      }));
-    }, []).sort((left, right) => left.time - right.time)
-  };
 
   fetchExchanges = async (callback: (payload: any) => Exchange, cachedExchanges): Promise<Array<Exchange>> => {
     let exchanges = cachedExchanges
