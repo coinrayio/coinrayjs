@@ -663,7 +663,16 @@ export default class Coinray {
         }
       }
       if (toBucketEnd(jsDate, resolution) >= currentTime) {
-        return this.get("candles/open", getParams) // this goes directly to the backend
+        const cacheKeyOpen = this.candleCacheKey({ prefix: "O", ...getParams.params})
+        if (!useWebSocket) {
+          let cached = this._candleCache.get(cacheKeyOpen)
+          if (cached) {
+            return cached
+          }
+        }
+        let req = this.get("candles/open", getParams) // this goes directly to the backend
+        this._candleCache.set(cacheKeyOpen, req)
+        return req
       } else {
         const cacheKey = this.candleCacheKey(getParams.params)
         let cachedCandlesResponses = this._candleCache.get(cacheKey)
@@ -713,8 +722,8 @@ export default class Coinray {
     }, []).sort((left, right) => left.time - right.time)
   }
 
-  candleCacheKey = ({symbol, resolution, year, month = "", day = "", week = ""} : {symbol: string, resolution: string, year: any, month?: any, day?: any, week?: any}) =>
-    `${symbol}/${resolution}/${year}/${month}/${day}/${week}`
+  candleCacheKey = ({symbol, resolution, year, month = "", day = "", week = "", prefix = "C"} : {symbol: string, resolution: string, year: any, month?: any, day?: any, week?: any, prefix?: string}) =>
+    `${prefix}/${symbol}/${resolution}/${year}/${month}/${day}/${week}`
 
   fetchExchanges = async (callback: (payload: any) => Exchange, cachedExchanges): Promise<Array<Exchange>> => {
     let exchanges = cachedExchanges
