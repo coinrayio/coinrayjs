@@ -93,6 +93,8 @@ export default class Coinray {
   private orderBookSubscribed: boolean = false;
   private _timeOffset: number;
   private _timeOffsetTimeout: any;
+  private _candleCache: Map<string, Promise<{result: any, _headers: any}>>;
+  private _candleCacheCreatedAt: number | undefined;
 
   constructor(token: string, {apiEndpoint, orderEndpoint, websocketEndpoint} =
       {
@@ -109,6 +111,7 @@ export default class Coinray {
       orderEndpoint: orderEndpoint || apiEndpoint || "https://api.coinray.eu",
       websocketEndpoint: websocketEndpoint || "wss://ws.coinray.eu/v1"
     };
+    this._candleCache = new Map();
 
     this.loadTimeOffset().then();
   }
@@ -662,7 +665,20 @@ export default class Coinray {
       if (toBucketEnd(jsDate, resolution) >= currentTime) {
         return this.get("candles/open", getParams) // this goes directly to the backend
       } else {
-        return this.get("candles/history", getParams) // this goes to the cf worker / cache
+        const cacheKey = this.candleCacheKey(getParams.params)
+        let cachedCandlesResponses = this._candleCache.get(cacheKey)
+        if (cachedCandlesResponses) {
+          return cachedCandlesResponses
+        } else {
+          let req = this.get("candles/history", getParams) // this goes to the cf worker / cache
+          // flush the whole candle response cache every 10 min
+          if (!this._candleCacheCreatedAt || (currentTime - this._candleCacheCreatedAt) > 600) {
+            this._candleCacheCreatedAt = currentTime
+            this._candleCache = new Map()
+          }
+          this._candleCache.set(cacheKey, req)
+          return req
+        }
       }
     })
 
@@ -696,6 +712,9 @@ export default class Coinray {
       }));
     }, []).sort((left, right) => left.time - right.time)
   }
+
+  candleCacheKey = ({symbol, resolution, year, month = "", day = "", week = ""} : {symbol: string, resolution: string, year: any, month?: any, day?: any, week?: any}) =>
+    `${symbol}/${resolution}/${year}/${month}/${day}/${week}`
 
   fetchExchanges = async (callback: (payload: any) => Exchange, cachedExchanges): Promise<Array<Exchange>> => {
     let exchanges = cachedExchanges
@@ -1009,7 +1028,7 @@ export default class Coinray {
     const nonce = this.getNonce();
     const requestUri = `/api/${version}/${endpoint}${paramString}`;
 
-    if (version === "v2") {
+    if (version === "v2" && !endpoint.startsWith("candles")) {
       const dataToSign = [nonce, method.toUpperCase(), requestUri, method === "GET" ? "" : JSON.stringify(body)].join("");
       const signature = signHMAC(dataToSign, secret);
 
