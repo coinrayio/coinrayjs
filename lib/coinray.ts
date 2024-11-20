@@ -679,6 +679,7 @@ export default class Coinray {
         if (cachedCandlesResponses) {
           return cachedCandlesResponses
         } else {
+          if (getParams.params.year < 2018 && bucketType === "year") { return new Promise((resolve) => resolve({ result: { candles: [], closed: true} })) }
           let req = this.get("candles/history", getParams) // this goes to the cf worker / cache
           // flush the whole candle response cache every 10 min
           if (!this._candleCacheCreatedAt || (currentTime - this._candleCacheCreatedAt) > 600) {
