@@ -269,7 +269,7 @@ export const toBucketEnd = (date, resolution) => {
     case "5":
     case "10":
     case "15":
-      return date.endOf("week").unix()
+      return date.endOf("isoWeek").unix()
     case "30":
     case "60":
     case "120":

@@ -627,14 +627,6 @@ export default class Coinray {
     const currentTime = new Date().getTime() / 1000
 
     let requests = getBucketStartDates(start, end, bucketType).map((momentDate) => {
-      const getWeek = function(d) {
-        let date = new Date(d.getTime())
-        date.setHours(0, 0, 0, 0)
-        date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7)
-        let week1 = new Date(date.getFullYear(), 0, 4)
-        return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7)
-      }
-
       let jsDate = momentDate.toDate()
       let timeParams: { year: number; month?: number; day?: number; week?: number; }
       switch (bucketType) {
@@ -642,7 +634,7 @@ export default class Coinray {
           timeParams = { year: jsDate.getFullYear(), month: jsDate.getMonth() + 1, day: jsDate.getDate() }
           break
         case "week":
-          timeParams = { year: jsDate.getFullYear(), week: getWeek(jsDate) }
+          timeParams = { year: jsDate.getFullYear(), week: momentDate.isoWeek() }
           break
         case "month":
           timeParams = { year: jsDate.getFullYear(), month: jsDate.getMonth() + 1 }
