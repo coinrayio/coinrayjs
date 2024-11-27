@@ -3,15 +3,17 @@ import {Channel, Socket} from "phoenix";
 import {
   candleTime,
   createJWT,
-  encryptPayload, getBucketStartDates,
+  encryptPayload,
+  getBucketStartDates,
+  getTimeParams,
   jwkToPublicKey,
   jwtExpired,
-  parseJWT, resolutionToBucketType,
+  parseJWT,
+  resolutionToBucketType,
   safeBigNumber,
   safeTime,
   signHMAC,
-  toBucketEnd,
-  toBucketStart
+  toBucketEnd, toBucketStart
 } from "./util";
 
 import {
@@ -31,7 +33,7 @@ import {
   UpdateOrderParams,
 } from "./types";
 import Exchange from "./exchange";
-import _, {chunk} from "lodash";
+import _ from "lodash";
 import I18n from "./i18n";
 
 const VERSION = require('../package.json').version;
@@ -93,7 +95,7 @@ export default class Coinray {
   private orderBookSubscribed: boolean = false;
   private _timeOffset: number;
   private _timeOffsetTimeout: any;
-  private _candleCache: Map<string, Promise<{result: any, _headers: any}>>;
+  private _candleCache: Map<string, Candle[]>;
   private _candleCacheCreatedAt: number | undefined;
 
   constructor(token: string, {apiEndpoint, orderEndpoint, websocketEndpoint} =
@@ -605,18 +607,10 @@ export default class Coinray {
   };
 
   fetchCandles = async ({coinraySymbol, resolution, start, end, useWebSocket}: CandlesParam): Promise<Candle[]> => {
-    const subscribe = new Promise(resolve => {
-      let timeout = setTimeout(() => resolve([]), 1000)
-      const onSnapshot = ({previousCandles}) => {
-        clearTimeout(timeout)
-        this.unsubscribeCandles({coinraySymbol, resolution}, onSnapshot)
-        resolve(previousCandles)
-      }
-      this.subscribeCandles({coinraySymbol, resolution}, onSnapshot)
-    })
+    this.flushCache()
 
     if (resolution.endsWith("S")) {
-      const snapshot = await subscribe as Candle[]
+      const snapshot = await this.getWebsocketCandles(coinraySymbol, resolution)
       return snapshot.filter((candle) => {
         let time = candle.time.getTime() / 1000
         return time >= start && time <= end
@@ -625,27 +619,26 @@ export default class Coinray {
 
     const bucketType = resolutionToBucketType(resolution)
     const currentTime = new Date().getTime() / 1000
+    const candles = [] as Candle[]
 
-    let requests = getBucketStartDates(start, end, bucketType).map((momentDate) => {
-      let jsDate = momentDate.toDate()
-      let timeParams: { year: number; month?: number; day?: number; week?: number; }
-      switch (bucketType) {
-        case "day":
-          timeParams = { year: jsDate.getFullYear(), month: jsDate.getMonth() + 1, day: jsDate.getDate() }
-          break
-        case "week":
-          timeParams = { year: jsDate.getFullYear(), week: momentDate.isoWeek() }
-          break
-        case "month":
-          timeParams = { year: jsDate.getFullYear(), month: jsDate.getMonth() + 1 }
-          break
-        case "year":
-          timeParams = { year: jsDate.getFullYear() }
-          break
-        default:
-          throw new Error(`Unsupported bucketType: ${bucketType}`)
+    let minTime = end
+    if (toBucketEnd(end, resolution) >= currentTime) {
+      let openCandles = await this.getOpenCandles(useWebSocket, {
+        version: "v2", params: {symbol: coinraySymbol, resolution: resolution,}
+      })
+
+      if (openCandles.length > 0) {
+        minTime = Math.min(openCandles[0].time.getTime() / 1000, minTime)
+        candles.push(...openCandles)
+      } else {
+        return []
       }
+    }
 
+    while (minTime > start) {
+      let prevCandleTime = candleTime(2, resolution, minTime)
+      let bucketStart = toBucketStart(prevCandleTime, resolution)
+      let timeParams = getTimeParams(bucketType, bucketStart)
       let getParams = {
         version: "v2",
         params: {
@@ -654,69 +647,107 @@ export default class Coinray {
           ...timeParams
         }
       }
-      if (toBucketEnd(jsDate, resolution) >= currentTime) {
-        const cacheKeyOpen = this.candleCacheKey({ prefix: "O", ...getParams.params})
-        if (!useWebSocket) {
-          let cached = this._candleCache.get(cacheKeyOpen)
-          if (cached) {
-            return cached
-          }
-        }
-        let req = this.get("candles/open", getParams) // this goes directly to the backend
-        this._candleCache.set(cacheKeyOpen, req)
-        return req
+
+      let historyCandles = (await this.getHistoryCandles(getParams)).filter(({time}) => time.getTime() / 1000 < minTime)
+      if (historyCandles.length > 0) {
+        minTime = Math.min(historyCandles[0].time.getTime() / 1000, minTime)
+        candles.unshift(...historyCandles)
       } else {
-        const cacheKey = this.candleCacheKey(getParams.params)
-        let cachedCandlesResponses = this._candleCache.get(cacheKey)
-        if (cachedCandlesResponses) {
-          return cachedCandlesResponses
-        } else {
-          if (getParams.params.year < 2018 && bucketType === "year") { return new Promise((resolve) => resolve({ result: { candles: [], closed: true} })) }
-          let req = this.get("candles/history", getParams) // this goes to the cf worker / cache
-          // flush the whole candle response cache every 10 min
-          if (!this._candleCacheCreatedAt || (currentTime - this._candleCacheCreatedAt) > 600) {
-            this._candleCacheCreatedAt = currentTime
-            this._candleCache = new Map()
-          }
-          this._candleCache.set(cacheKey, req)
-          return req
-        }
+        break
       }
+    }
+
+    return candles.filter(({time}) => {
+      let current = time.getTime() / 1000
+      return current >= start && current <= end
+    }).sort((left, right) => left.time.getTime() - right.time.getTime())
+  }
+
+  flushCache = () => {
+    let currentTime = new Date().getTime() / 1000
+    // flush the whole candle response cache every 10 min
+    if (!this._candleCacheCreatedAt || (currentTime - this._candleCacheCreatedAt) > 600) {
+      this._candleCacheCreatedAt = currentTime
+      this._candleCache = new Map()
+    }
+  }
+
+  getWebsocketCandles = async (coinraySymbol, resolution): Promise<Candle[]> => {
+    const subscribe = new Promise(resolve => {
+      let timeout = setTimeout(() => {
+        this.unsubscribeCandles({coinraySymbol, resolution}, onSnapshot)
+        resolve([])
+      }, 0)
+
+      const onSnapshot = ({previousCandles}) => {
+        clearTimeout(timeout)
+        this.unsubscribeCandles({coinraySymbol, resolution}, onSnapshot)
+        resolve(previousCandles)
+      }
+      this.subscribeCandles({coinraySymbol, resolution}, onSnapshot)
     })
+    return await subscribe as Candle[]
+  }
 
-    let indexedSnapshot = {}
-    const minDate = new Date()
-    minDate.setMinutes(minDate.getMinutes() - 5)
-    // Fetch data from the websocket snapshot to merge the highs and lows
-    if (useWebSocket && end > minDate.getTime() / 1000) {
-      const snapshot = await subscribe as Candle[]
-      indexedSnapshot = _.keyBy(snapshot, ({time}) => time.getTime())
+  getOpenCandles = async (useWebSocket, getParams): Promise<Candle[]> => {
+    const cacheKeyOpen = this.candleCacheKey({prefix: "O", ...getParams.params})
+    let cached = this._candleCache.get(cacheKeyOpen)
+    if (!useWebSocket && cached) {
+      return cached
     }
 
-    const chunkedArray = chunk(requests, 5);
-    const results = [];
-    for (const chunk of chunkedArray) {
-      const chunkResults = await Promise.all(chunk);
-      results.push(...chunkResults); // Add the resolved values to the results array
-    }
+    const snapshot = await this.getWebsocketCandles(getParams.params.symbol, getParams.params.resolution)
+    const indexedSnapshot = _.keyBy(snapshot, ({time}) => time.getTime())
 
-    return results.reduce((candles, {result}) => {
-      return candles.concat(result.candles.map(Coinray._parseCandle).filter(({time}) => {
-        time = time.getTime() / 1000
-        return time >= start && time <= end
-      }).map((candle) => {
+    let {result} = await this.get("candles/open", getParams) // this goes directly to the backend
+    if (result.candles) {
+      let candles = result.candles.map(Coinray._parseCandle)
+      let merged = candles.map((candle) => {
         const snapshotCandle = indexedSnapshot[candle.time.getTime()]
         if (snapshotCandle) {
           return Coinray._mergeCandle(candle, snapshotCandle)
         } else {
           return candle
         }
-      }));
-    }, []).sort((left, right) => left.time - right.time)
+      })
+
+      this._candleCache.set(cacheKeyOpen, merged)
+      return merged
+    } else {
+      return []
+    }
   }
 
-  candleCacheKey = ({symbol, resolution, year, month = "", day = "", week = "", prefix = "C"} : {symbol: string, resolution: string, year: any, month?: any, day?: any, week?: any, prefix?: string}) =>
-    `${prefix}/${symbol}/${resolution}/${year}/${month}/${day}/${week}`
+  getHistoryCandles = async (getParams): Promise<Candle[]> => {
+    const cacheKey = this.candleCacheKey(getParams.params)
+    let cachedCandlesResponses = this._candleCache.get(cacheKey)
+    if (cachedCandlesResponses) {
+      return cachedCandlesResponses
+    } else {
+      if (getParams.params.year < 2018) {
+        return new Promise((resolve) => resolve([]))
+      }
+      let {result} = await this.get("candles/history", getParams) // this goes to the cf worker / cache
+      if (result.candles) {
+        let candles = result.candles.map(Coinray._parseCandle)
+        this._candleCache.set(cacheKey, candles)
+        return candles
+      } else {
+        return []
+      }
+    }
+  }
+
+  candleCacheKey = ({symbol, resolution, year, month = "", day = "", week = "", prefix = "C"}: {
+    symbol: string,
+    resolution: string,
+    year: any,
+    month?: any,
+    day?: any,
+    week?: any,
+    prefix?: string
+  }) =>
+      `${prefix}/${symbol}/${resolution}/${year}/${month}/${day}/${week}`
 
   fetchExchanges = async (callback: (payload: any) => Exchange, cachedExchanges): Promise<Array<Exchange>> => {
     let exchanges = cachedExchanges

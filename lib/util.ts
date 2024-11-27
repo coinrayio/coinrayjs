@@ -293,7 +293,7 @@ export const toBucketStart = (date, resolution) => {
     case "5":
     case "10":
     case "15":
-      return date.startOf("week").unix()
+      return date.startOf("isoWeek").unix()
     case "30":
     case "60":
     case "120":
@@ -330,6 +330,28 @@ export function resolutionToBucketType(resolution): "day" | "week" | "month" | "
     default:
       throw new Error(`Unsupported resolution: ${resolution}`)
   }
+}
+
+export function getTimeParams(bucketType : String, date : any)  {
+  let momentDate = moment(toSafeDate(date))
+  let timeParams: { year: number; month?: number; day?: number; week?: number; }
+  switch (bucketType) {
+    case "day":
+      timeParams = {year: momentDate.year(), month: momentDate.month() + 1, day: momentDate.date()}
+      break
+    case "week":
+      timeParams = {year: momentDate.year(), week: momentDate.isoWeek()}
+      break
+    case "month":
+      timeParams = {year: momentDate.year(), month: momentDate.month() + 1}
+      break
+    case "year":
+      timeParams = {year: momentDate.year()}
+      break
+    default:
+      throw new Error(`Unsupported bucketType: ${bucketType}`)
+  }
+  return timeParams
 }
 
 export function getBucketStartDates(startTime: number, endTime: number, bucketType: "day" | "week" | "month" | "year"): Array<Moment> {
