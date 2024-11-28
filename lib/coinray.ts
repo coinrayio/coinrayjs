@@ -13,7 +13,8 @@ import {
   safeBigNumber,
   safeTime,
   signHMAC,
-  toBucketEnd, toBucketStart
+  toBucketEnd,
+  toBucketStart
 } from "./util";
 
 import {
@@ -33,7 +34,7 @@ import {
   UpdateOrderParams,
 } from "./types";
 import Exchange from "./exchange";
-import _ from "lodash";
+import _, {chunk} from "lodash";
 import I18n from "./i18n";
 
 const VERSION = require('../package.json').version;
@@ -635,24 +636,36 @@ export default class Coinray {
       }
     }
 
-    while (minTime > start) {
-      let prevCandleTime = candleTime(2, resolution, minTime)
-      let bucketStart = toBucketStart(prevCandleTime, resolution)
-      let timeParams = getTimeParams(bucketType, bucketStart)
-      let getParams = {
-        version: "v2",
-        params: {
-          symbol: coinraySymbol,
-          resolution: resolution,
-          ...timeParams
+
+
+    let newEnd = candleTime(2, resolution, minTime)
+    let chunks = chunk(getBucketStartDates(start, newEnd, bucketType), 10)
+    for (let i = 0; i < chunks.length; i += 1) {
+      let requests = chunks[i].map((bucketStart) => {
+        let timeParams = getTimeParams(bucketType, bucketStart)
+        let getParams = {
+          version: "v2",
+          params: {
+            symbol: coinraySymbol,
+            resolution: resolution,
+            ...timeParams
+          }
+        }
+
+        return this.getHistoryCandles(getParams)
+      })
+
+      let results: Candle[][] = await Promise.all(requests)
+
+      let historyCandles = []
+      for (let j = 0; j < results.length; j += 1) {
+        historyCandles = results[j].filter(({time}) => time.getTime() / 1000 < minTime)
+        if (historyCandles.length > 0) {
+          minTime = Math.min(historyCandles[0].time.getTime() / 1000, minTime)
+          candles.unshift(...historyCandles)
         }
       }
-
-      let historyCandles = (await this.getHistoryCandles(getParams)).filter(({time}) => time.getTime() / 1000 < minTime)
-      if (historyCandles.length > 0) {
-        minTime = Math.min(historyCandles[0].time.getTime() / 1000, minTime)
-        candles.unshift(...historyCandles)
-      } else {
+      if (historyCandles.length === 0) {
         break
       }
     }
