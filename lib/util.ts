@@ -340,7 +340,7 @@ export function getTimeParams(bucketType : String, date : any)  {
       timeParams = {year: momentDate.year(), month: momentDate.month() + 1, day: momentDate.date()}
       break
     case "week":
-      timeParams = {year: momentDate.year(), week: momentDate.isoWeek()}
+      timeParams = {year: momentDate.isoWeekYear(), week: momentDate.isoWeek()}
       break
     case "month":
       timeParams = {year: momentDate.year(), month: momentDate.month() + 1}
