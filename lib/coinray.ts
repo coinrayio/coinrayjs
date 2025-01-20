@@ -804,12 +804,17 @@ export default class Coinray {
     }
   };
 
-  wrapApiKey = async (apiKeySettings: {}) => {
+  wrapApiKey = async (apiKeySettings: {}, preWrapped: false) => {
     const publicKey = await this.publicKey();
 
+    let encryptedApiKey;
     try {
-      const apiKey = JSON.stringify(apiKeySettings);
-      const encryptedApiKey = await encryptPayload(await createJWT({apiKey}), publicKey);
+      if (preWrapped) {
+        encryptedApiKey = apiKeySettings
+      } else {
+        const apiKey = JSON.stringify(apiKeySettings);
+        encryptedApiKey = await encryptPayload(await createJWT({apiKey}), publicKey);
+      }
 
       const {result} = await this.post("credentials/wrap_api_key", {
         secret: this._sessionKey,
