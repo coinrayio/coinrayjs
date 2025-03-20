@@ -10,6 +10,7 @@ export const TRADES_DELAY_THRESHOLD = 30 * 1000
 
 export default class CurrentMarket extends EventEmitter {
   private coinrayCache: CoinrayCache;
+  private getPriceOverrides: any;
   public coinraySymbol: string;
   private timeouts: {};
   private orderBook: { minSeq: undefined | number, maxSeq: undefined | number, asks: {}; bids: {} };
@@ -29,6 +30,7 @@ export default class CurrentMarket extends EventEmitter {
     this.coinrayCache = coinrayCache;
     this.timeouts = {};
     this.maxTrades = options.maxTrades || 100;
+    if (options.getPriceOverrides) this.getPriceOverrides = options.getPriceOverrides
     this.destroy();
   }
 
@@ -60,7 +62,9 @@ export default class CurrentMarket extends EventEmitter {
 
   getMarket() {
     if (this.coinraySymbol) {
-      return this.coinrayCache.getMarket(this.coinraySymbol)
+      const market = this.coinrayCache.getMarket(this.coinraySymbol)
+      market.overridePrices(this.getPriceOverrides)
+      return market
     } else {
       throw new MarketNotFoundError(`Market not found: ${this.coinraySymbol}`)
     }
@@ -121,7 +125,7 @@ export default class CurrentMarket extends EventEmitter {
 
         const market = this.getMarket();
         const lastPrice = safeBigNumber(trades[0].price);
-        if (!market.lastPrice.eq(lastPrice) || !this.prevTickers.lastPrice.eq(lastPrice)) {
+        if (!market._lastPrice.eq(lastPrice) || !this.prevTickers.lastPrice.eq(lastPrice)) {
           market.updateTicker({lastPrice});
           this.updatePrevTicker({lastPrice})
           this.dispatchEvent('marketUpdated', {market})
@@ -138,7 +142,7 @@ export default class CurrentMarket extends EventEmitter {
 
         const askPrice = asks[0].price;
         const bidPrice = bids[0].price;
-        const isNew = !market.askPrice.eq(askPrice) || !market.bidPrice.eq(bidPrice)
+        const isNew = !market._askPrice.eq(askPrice) || !market._bidPrice.eq(bidPrice)
         const isNewToMe = !this.prevTickers.askPrice.eq(askPrice) || !this.prevTickers.bidPrice.eq(bidPrice)
         if (isNew || isNewToMe) {
           market.updateTicker({askPrice, bidPrice});

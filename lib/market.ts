@@ -58,10 +58,11 @@ export default class Market {
   public readonly status: string;
   public readonly note: string;
   private readonly _supportedOrderTypes: OrderType[] | null;
-  public lastPrice?: BigNumber;
-  public askPrice: BigNumber;
-  public bidPrice: BigNumber;
+  public _lastPrice?: BigNumber;
+  public _askPrice: BigNumber;
+  public _bidPrice: BigNumber;
   public readonly updatedAt: string;
+  public getPriceOverrides: any
 
   public static Create(d: any, api: Coinray, exchange: Exchange): Market {
     if (d === null || d === undefined) {
@@ -159,11 +160,11 @@ export default class Market {
     this.change = safeFloat(d.change);
     this.delistedOn = d.delistedOn;
     this.exchangeUrl = d.exchangeUrl;
-    this.lastPrice = safeBigNumber(d.lastPrice);
+    this._lastPrice = safeBigNumber(d.lastPrice);
     this.baseToUsd = safeBigNumber(d.baseToUsd);
     this.quoteToUsd = safeBigNumber(d.quoteToUsd);
-    this.askPrice = safeBigNumber(d.askPrice);
-    this.bidPrice = safeBigNumber(d.bidPrice);
+    this._askPrice = safeBigNumber(d.askPrice);
+    this._bidPrice = safeBigNumber(d.bidPrice);
     this._supportedOrderTypes = d.supportedOrderTypes;
     this.updatedAt = d.updatedAt;
   }
@@ -200,17 +201,37 @@ export default class Market {
     return [this.baseCurrency, this.quoteCurrency].join("/")
   }
 
+  get priceOverrides() {
+    return this.getPriceOverrides ? this.getPriceOverrides() : {}
+  }
+
+  get lastPrice() {
+    return this.priceOverrides.lastPrice || this._lastPrice
+  }
+
+  get askPrice() {
+    return this.priceOverrides.askPrice || this._askPrice
+  }
+
+  get bidPrice() {
+    return this.priceOverrides.bidPrice || this._bidPrice
+  }
+
+  overridePrices = (getPriceOverrides: any) => {
+    this.getPriceOverrides = getPriceOverrides
+  }
+
   updateTicker = ({lastPrice, bidPrice, askPrice}: any) => {
     if (lastPrice) {
-      this.lastPrice = lastPrice
+      this._lastPrice = lastPrice
     }
 
     if (askPrice) {
-      this.askPrice = askPrice
+      this._askPrice = askPrice
     }
 
     if (bidPrice) {
-      this.bidPrice = bidPrice
+      this._bidPrice = bidPrice
     }
   }
 }
