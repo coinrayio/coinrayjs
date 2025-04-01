@@ -99,6 +99,8 @@ export enum ExchangeFeatures {
   ORDER_QUOTE_AMOUNT = "orderQuoteAmount",
   MARKET_BUY_QUOTE_ONLY = "marketBuyQuoteOnly",
   UPDATE_LEVERAGE_ONLY_ON_OPEN_POSITIONS = "updateLeverageOnlyOnOpenPositions",
+  FAST_CONNECT = "fastConnect",
+  UNIFIED_BALANCE = "unifiedBalance",
 }
 
 export enum IpWhiteList {
