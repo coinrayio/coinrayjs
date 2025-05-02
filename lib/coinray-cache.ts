@@ -123,12 +123,7 @@ export default class CoinrayCache extends EventEmitter {
     const exchanges = await this.rootApi.fetchExchanges((exchange) => {
       newCache.exchanges.push(exchange)
       if (!this.apis.has(exchange.code)) {
-        if (this.rootApi.config.apiEndpoint === exchange.apiEndpoint) {
-          this.apis.set(exchange.code, this.rootApi)
-        } else {
-          let api = new Coinray(this.rootApi._token, exchange);
-          this.apis.set(exchange.code, api)
-        }
+        this.apis.set(exchange.code, this.rootApi)
       }
       return Exchange.Create(exchange, this.apis.get(exchange.code))
     }, apiCache?.exchanges)
