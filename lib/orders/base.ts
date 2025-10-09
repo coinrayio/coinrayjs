@@ -2,7 +2,8 @@ import validate from "./validate"
 import {BalanceLimit, BaseOrderParams, MarketBalance, OrderSide, TimeInForce} from "../types";
 import BigNumber from "bignumber.js";
 import {safeBigNumber, safeInteger} from "../util";
-import UUID from "uuid/v4"
+import {v4 as UUID} from "uuid";
+
 
 export default abstract class BaseOrder {
   id = UUID();

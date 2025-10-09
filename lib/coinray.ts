@@ -1115,7 +1115,7 @@ export default class Coinray {
       } else {
         result = response.data
       }
-      return {result, _headers: response.headers}
+      return {result}
     } catch (error) {
       const {response, request} = error;
       if (response) {

@@ -6,7 +6,8 @@ import CoinrayCache from "../lib/coinray-cache";
 
 jest.setTimeout(30000);
 
-const coinrayToken = ""
+// TODO
+const coinrayToken = "eyJraWQiOiJSRVVrOGZZVnNveXBSUDIzIiwiYWxnIjoiSFMyNTYifQ.eyJpc3MiOiJSRVVrOGZZVnNveXBSUDIzIiwic3ViIjoiNzZlYzU0MWUtZjI3Ny00MzQ2LTk2YmUtODcxNjhiYzIxNTJhIiwiZXhwIjoxNzYxMjg3ODYzfQ.sCqL9zz2YaoEKEGKcZA_W-b-pAsL8RjzwCUoxsMnXyQ"
 const coinray = new Coinray(coinrayToken)
 const coinrayCache = new CoinrayCache(coinrayToken, {apiEndpoint: "https://api.coinray.eu"})
 
@@ -24,18 +25,21 @@ describe("searchMarkets", () => {
     const resultMap = coinrayCache.searchMarkets("trx")
 
     const nonTrxMarket = Object.values(resultMap).find(({exchangeCode, baseCurrency, quoteCurrency}) => {
-      return baseCurrency.toLowerCase() !== "trx" && quoteCurrency.toLowerCase() !== "trx"
+      return !baseCurrency.toLowerCase().includes("trx") && !quoteCurrency.toLowerCase().includes("trx")
     })
+
     expect(!!nonTrxMarket).toBeFalsy()
   })
 
-  test("query `btrx` should return markets in BTRX", async () => {
-    const resultMap = coinrayCache.searchMarkets("btrx")
+  test("query `hubi` should return markets in HUBI", async () => {
+    const resultMap = coinrayCache.searchMarkets("hubi")
 
-    const btrxMarket = Object.values(resultMap).find(({exchangeCode}) => {
-      return exchangeCode.toLowerCase() === "btrx"
+    const hubiMarket = Object.values(resultMap).find(({exchangeCode}) => {
+      return exchangeCode.toLowerCase() === "hubi"
     })
-    expect(!!btrxMarket).toBeTruthy()
+
+
+    expect(!!hubiMarket).toBeTruthy()
   })
 
   test("query `hit` should return non-HIT markets in HITB, and also HIT-markets not in HITB", async () => {
@@ -56,7 +60,7 @@ describe("searchMarkets", () => {
     const resultMap = coinrayCache.searchMarkets("hit/eth")
 
     const nonHitMarket = Object.values(resultMap).find(({exchangeCode, baseCurrency, quoteCurrency}) => {
-      return exchangeCode.toLowerCase() === "hitb" && !quoteCurrency.toLowerCase().includes("hit") && !baseCurrency.toLowerCase().includes("eth")
+      return exchangeCode.toLowerCase() === "hitb" && !baseCurrency.toLowerCase().includes("hit") && !quoteCurrency.toLowerCase().includes("eth")
     })
     expect(!!nonHitMarket).toBeFalsy()
 

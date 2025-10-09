@@ -4,7 +4,8 @@ module.exports = {
     "<rootDir>/test"
   ],
   "transform": {
-    "^.+\\.tsx?$": "ts-jest"
+    "^.+\\.ts$": "ts-jest",                // transpile your TS
+    "^.+\\.m?jsx?$": "babel-jest",         // transpile ESM deps like uuid
   },
   "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.tsx?$",
   "watchPathIgnorePatterns":  ["<rootDir>/test/exchanges.json", "<rootDir>/node_modules/"],
@@ -16,5 +17,9 @@ module.exports = {
     "json",
     "node"
   ],
-  testEnvironment: 'node'
+  testEnvironment: "node",
+  transformIgnorePatterns: [
+    "node_modules/(?!uuid/)", // 👈 tell Jest to transform uuid
+  ],
+
 }
