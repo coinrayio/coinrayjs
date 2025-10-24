@@ -1124,7 +1124,7 @@ export default class Coinray {
 
     if (version === "v2" && !endpoint.startsWith("candles")) {
       const dataToSign = [nonce, method.toUpperCase(), requestUri, method === "GET" ? "" : JSON.stringify(body)].join("");
-      const signature = await signHMAC(dataToSign, secret);
+      const signature = secret != "" ? await signHMAC(dataToSign, secret) : "";
 
       headers = {
         ...headers,

@@ -1,3 +1,9 @@
+import _, {camelCase} from "lodash"
+import BigNumber from "bignumber.js";
+import {MarketMap, MarketQuery} from "./types";
+import {crypto as coinrayCrypto } from "./crypto";
+import moment, {Moment} from "moment";
+
 // --- base64url helpers without external deps ---
 function toBase64Url(b64: string): string {
   return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
@@ -18,11 +24,6 @@ function b64ToU8(b64: string): Uint8Array {
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
-import _, {camelCase} from "lodash"
-import BigNumber from "bignumber.js";
-import {MarketMap, MarketQuery} from "./types";
-import {crypto} from "./crypto";
-import moment, {Moment} from "moment";
 
 export const MINUTES = 60;
 export const HOURS = 60 * MINUTES;
@@ -78,19 +79,19 @@ export async function signHMAC(dataToSign, secret, format = 'hex') {
 }
 
 export function createJWT(payload: {}, secret = undefined) {
-  return crypto.createJWT(payload, secret)
+  return coinrayCrypto.createJWT(payload, secret)
 }
 
 export function parseJWT(jwt) {
-  return crypto.parseJWT(jwt)
+  return coinrayCrypto.parseJWT(jwt)
 }
 
 export function jwkToPublicKey(jwk) {
-  return crypto.jwkToPublicKey(jwk)
+  return coinrayCrypto.jwkToPublicKey(jwk)
 }
 
 export function encryptPayload(payload, publicKey) {
-  return crypto.encryptPayload(payload, publicKey)
+  return coinrayCrypto.encryptPayload(payload, publicKey)
 }
 
 export function camelize(value) {
