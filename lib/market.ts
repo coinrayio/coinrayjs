@@ -15,9 +15,6 @@ import {
 import Coinray from "./coinray";
 import Exchange from "./exchange";
 import {OrderType} from "./types";
-
-let obj: any = null;
-
 export default class Market {
   public getExchange: () => Exchange
   public readonly api: Coinray;

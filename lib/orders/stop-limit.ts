@@ -1,7 +1,7 @@
 import {OrderSide, OrderType} from "../types";
 import BigNumber from "bignumber.js";
 import LimitOrder, {LimitOrderParams} from "./limit";
-import {safeBigNumber, safeFloat} from "../util";
+import {safeBigNumber} from "../util";
 
 interface StopLimitOrderParams extends LimitOrderParams {
   stopPrice: BigNumber,

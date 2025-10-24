@@ -35,7 +35,7 @@ const PRICE_SCALES = {
 
     return numbers.slice(0, numOrders - 1).concat([1]) // always make sure the last number is 1
   },
-  [PriceScales.CUSTOM]: (numOrders: number): Array<number> => {
+  [PriceScales.CUSTOM]: (_numOrders: number): Array<number> => {
     return []
   }
 };
@@ -65,7 +65,7 @@ const SIZE_SCALES = {
   [SizeScales.EXPONENTIAL_REVERSE]: (numOrders: number): Array<number> => {
     return SIZE_SCALES[SizeScales.EXPONENTIAL](numOrders).reverse()
   },
-  [SizeScales.CUSTOM]: (numOrders: number): Array<number> => {
+  [SizeScales.CUSTOM]: (_numOrders: number): Array<number> => {
     return []
   }
 };
@@ -90,7 +90,7 @@ export default class LimitLadderOrder extends BaseOrder {
   sizeScale: SizeScales;
   priceScales: Array<number>;
   sizeScales: Array<number>;
-  balanceLimit: BalanceLimit;
+  declare balanceLimit: BalanceLimit;
 
   orderType = OrderType.LIMIT_LADDER;
 

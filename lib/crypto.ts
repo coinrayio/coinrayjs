@@ -1,35 +1,22 @@
 import {base64UrlDecode, base64UrlEncode, sha256hexdigest, signHMAC} from "./util";
+import { importJWK, CompactEncrypt } from 'jose';
 
 export let crypto;
 
-try {
-  // Use node-jose if installed
-  const {JWE, JWK} = require("node-jose");
-  crypto = {
-    jwkToPublicKey: (jwk) => {
-      return JWK.asKey(jwk);
-    },
+crypto = {
+  jwkToPublicKey: async (jwk: JsonWebKey) => {
+    // Import an RSA public key for RSA-OAEP using Web Crypto (browser)
+    return await importJWK(jwk, 'RSA-OAEP');
+  },
 
-    encryptPayload: (jwt, publicKey) => {
-      return JWE.createEncrypt({compact: true}, {key: publicKey}).final(jwt, "utf8")
-    }
-  };
-} catch (e) {
-  // Use jose-jwe-jwe if installed
-  const {Jose} = require("jose-jwe-jws");
-
-  crypto = {
-    jwkToPublicKey: (jwk) => {
-      return Jose.Utils.importRsaPublicKey(jwk, "RSA-OAEP");
-    },
-
-    encryptPayload: (jwt, publicKey) => {
-      var cryptographer = new Jose.WebCryptographer();
-      var encrypter = new Jose.JoseJWE.Encrypter(cryptographer, publicKey);
-      return encrypter.encrypt(jwt);
-    }
-  };
-}
+  encryptPayload: async (jwt: string, publicKey: CryptoKey) => {
+    // Create a compact JWE using RSA-OAEP + A256GCM
+    const plaintext = new TextEncoder().encode(jwt);
+    return await new CompactEncrypt(plaintext)
+      .setProtectedHeader({ alg: 'RSA-OAEP', enc: 'A256GCM' })
+      .encrypt(publicKey);
+  }
+};
 
 crypto.createJWT = async (payload: {}, secret = undefined) => {
   const body = base64UrlEncode(JSON.stringify(payload));

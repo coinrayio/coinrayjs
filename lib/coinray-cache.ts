@@ -16,7 +16,6 @@ export default class CoinrayCache extends EventEmitter {
   public refreshRate: number;
   private refreshTimeout: any;
   private _refreshingToken: any;
-  private tokenRefreshed: any;
   private _onTokenExpired: () => Promise<string>;
   private readonly onStoreCache
   private readonly apiCache

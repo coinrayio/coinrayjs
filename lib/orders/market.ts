@@ -2,7 +2,7 @@ import BaseOrder from "./base";
 import {BalanceLimit, BaseOrderParams, OrderType} from "../types";
 import BigNumber from "bignumber.js";
 import Coinray from "../coinray";
-import {correctNumberPrecision, safeBigNumber} from "../util";
+import {correctNumberPrecision} from "../util";
 
 
 interface MarketOrderParams extends BaseOrderParams {

@@ -1,9 +1,27 @@
-import {hmac, md} from "node-forge";
+// --- base64url helpers without external deps ---
+function toBase64Url(b64: string): string {
+  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+function fromBase64Url(b64url: string): string {
+  const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+  return b64 + pad;
+}
+function u8ToB64(u8: Uint8Array): string {
+  let bin = '';
+  for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+  return btoa(bin);
+}
+function b64ToU8(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
 import _, {camelCase} from "lodash"
 import BigNumber from "bignumber.js";
 import {MarketMap, MarketQuery} from "./types";
 import {crypto} from "./crypto";
-import {base64url} from "rfc4648";
 import moment, {Moment} from "moment";
 
 export const MINUTES = 60;
@@ -20,32 +38,43 @@ export function strToArray(str) {
   return str.split('').map((char) => char.charCodeAt(0))
 }
 
+
 export function base64UrlEncode(str) {
-  return base64url.stringify(strToArray(str), {pad: false})
+  const bytes = new TextEncoder().encode(str);
+  return toBase64Url(u8ToB64(bytes));
 }
 
 export function base64UrlDecode(str) {
-  return String.fromCharCode.apply(null, base64url.parse(str, {loose: true}))
+  const u8 = b64ToU8(fromBase64Url(str));
+  return new TextDecoder().decode(u8);
 }
 
-export function sha256hexdigest(str) {
-  const digest = md.sha256.create();
-  digest.update(str);
-  return digest.digest().toHex();
+export async function sha256hexdigest(str) {
+  const data = new TextEncoder().encode(str);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  const bytes = new Uint8Array(digest);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+  return hex;
 }
 
-export function signHMAC(dataToSign, secret, format = "hex") {
-  const digest = hmac.create();
-  digest.start("sha256", secret);
-  digest.update(dataToSign);
-  const result = digest.digest()
+export async function signHMAC(dataToSign, secret, format = 'hex') {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(dataToSign));
+  const bytes = new Uint8Array(sig);
 
-  switch (format) {
-    case "base64url":
-      return base64UrlEncode(result.data)
-    default:
-      return result.toHex()
+  if (format === 'base64url') {
+    return toBase64Url(u8ToB64(bytes));
   }
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+  return hex;
 }
 
 export function createJWT(payload: {}, secret = undefined) {
@@ -438,7 +467,7 @@ export function filterMarkets(markets: MarketMap, marketQuery: string | MarketQu
       }
     }
     const keywords = query.toLowerCase().split(/[\s]+/).filter(Boolean);
-    filteredMarkets = _.pickBy(filteredMarkets, (market, key) => {
+    filteredMarkets = _.pickBy(filteredMarkets, (market, _) => {
       const matchTo = market[marketProperty].toLowerCase();
 
       if (matcher && marketProperty === "fullDisplayName") {

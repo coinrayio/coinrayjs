@@ -12,11 +12,8 @@ export default class CurrentMarket extends EventEmitter {
   private coinrayCache: CoinrayCache;
   private getPriceOverrides: any;
   public coinraySymbol: string;
-  private timeouts: {};
   private orderBook: { minSeq: undefined | number, maxSeq: undefined | number, asks: {}; bids: {} };
   private trades: any[];
-  private tradesStarted: boolean;
-  private orderBookStarted: boolean;
   private tradesDelayed: boolean;
   private maxTrades: number;
   private prevTickers = {
@@ -28,7 +25,6 @@ export default class CurrentMarket extends EventEmitter {
   constructor(coinrayCache: CoinrayCache, options = {} as any) {
     super();
     this.coinrayCache = coinrayCache;
-    this.timeouts = {};
     this.maxTrades = options.maxTrades || 100;
     if (options.getPriceOverrides) this.getPriceOverrides = options.getPriceOverrides
     this.destroy();
@@ -173,7 +169,6 @@ export default class CurrentMarket extends EventEmitter {
   startOrderBook = () => {
     if (this.coinraySymbol && this.hasListeners("orderBookUpdated")) {
       this.coinrayCache.subscribeOrderBook({coinraySymbol: this.coinraySymbol}, this.handleOrderBook);
-      this.orderBookStarted = true;
     }
   };
 
@@ -188,7 +183,6 @@ export default class CurrentMarket extends EventEmitter {
       asks: {}
     };
 
-    this.orderBookStarted = false;
   };
 
   handleOrderBook = async ({type, coinraySymbol, orderBook}) => {
@@ -254,7 +248,6 @@ export default class CurrentMarket extends EventEmitter {
   startTrades = () => {
     if (this.coinraySymbol && this.hasListeners("tradesUpdated")) {
       this.coinrayCache.subscribeTrades({coinraySymbol: this.coinraySymbol}, this.handleTrades);
-      this.tradesStarted = true;
     }
   };
 
@@ -263,7 +256,6 @@ export default class CurrentMarket extends EventEmitter {
       this.coinrayCache.unsubscribeTrades({coinraySymbol: this.coinraySymbol}, this.handleTrades);
     }
     this.trades = [];
-    this.tradesStarted = false;
   };
 
   handleTrades = ({type, coinraySymbol, trades}) => {

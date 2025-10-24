@@ -16,7 +16,7 @@ export default class LimitOrder extends BaseOrder {
   quoteAmount: BigNumber;
   price: BigNumber;
   lockedOn: string;
-  balanceLimit: BalanceLimit;
+  declare balanceLimit: BalanceLimit;
 
   orderType = OrderType.LIMIT;
 
