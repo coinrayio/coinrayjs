@@ -1,49 +1,91 @@
 class TickerSubscriptions {
-  public subscriptions: Set<string>;
-  public pendingAdditions: Set<string>;
-  public pendingRemovals: Set<string>;
+  public subscriptions: Map<string, Set<string>>;
+  public pendingAdditions: Map<string, Set<string>>;
+  public pendingRemovals: Map<string, Set<string>>;
+
   constructor() {
-    this.subscriptions = new Set<string>();
-    this.pendingAdditions = new Set<string>();
-    this.pendingRemovals = new Set<string>();
+    this.subscriptions = new Map<string, Set<string>>();
+    this.pendingAdditions = new Map<string, Set<string>>();
+    this.pendingRemovals = new Map<string, Set<string>>();
   }
 
   has(ticker: string): boolean {
-    return this.subscriptions.has(ticker);
+    const listeners = this.subscriptions.get(ticker);
+    return listeners !== undefined && listeners.size > 0;
   }
 
-  subscribe(tickers: string[], reset : boolean = false) {
+  subscribe(listenerId: string, tickers: string[], reset: boolean = false) {
     if (reset) {
-      this.unsubscribeAll();
+      this.unsubscribeAll(listenerId);
     }
 
     for (let ticker of tickers) {
-      this.pendingAdditions.add(ticker);
-      this.pendingRemovals.delete(ticker);
+      if (!this.pendingAdditions.has(ticker)) {
+        this.pendingAdditions.set(ticker, new Set<string>());
+      }
+      this.pendingAdditions.get(ticker)!.add(listenerId);
+
+      if (this.pendingRemovals.has(ticker)) {
+        this.pendingRemovals.get(ticker)!.delete(listenerId);
+        if (this.pendingRemovals.get(ticker)!.size === 0) {
+          this.pendingRemovals.delete(ticker);
+        }
+      }
     }
   }
 
-  unsubscribe(tickers: string[]) {
+  unsubscribe(listenerId: string,  tickers: string[]) {
     for (let ticker of tickers) {
-      this.pendingRemovals.add(ticker);
-      this.pendingAdditions.delete(ticker);
+      if (this.pendingAdditions.has(ticker)) {
+        this.pendingAdditions.get(ticker)!.delete(listenerId);
+        if (this.pendingAdditions.get(ticker)!.size === 0) {
+          this.pendingAdditions.delete(ticker);
+        }
+      }
+
+      if (!this.pendingRemovals.has(ticker)) {
+        this.pendingRemovals.set(ticker, new Set<string>());
+      }
+      this.pendingRemovals.get(ticker)!.add(listenerId);
     }
   }
 
-  unsubscribeAll() {
-    for (let ticker of this.subscriptions) {
-      this.pendingRemovals.add(ticker);
+  unsubscribeAll(listenerId: string) {
+    for (let [ticker, listeners] of this.subscriptions) {
+      if (listeners.has(listenerId)) {
+        if (!this.pendingRemovals.has(ticker)) {
+          this.pendingRemovals.set(ticker, new Set<string>());
+        }
+        this.pendingRemovals.get(ticker)!.add(listenerId);
+      }
     }
     this.pendingAdditions.clear();
   }
 
   processPendingChanges() {
-    for (let ticker of this.pendingAdditions) {
-      this.subscriptions.add(ticker);
+    for (let [ticker, listenersToAdd] of this.pendingAdditions) {
+      if (!this.subscriptions.has(ticker)) {
+        this.subscriptions.set(ticker, new Set<string>());
+      }
+      const currentListeners = this.subscriptions.get(ticker)!;
+      for (let listenerId of listenersToAdd) {
+        currentListeners.add(listenerId);
+      }
     }
-    for (let ticker of this.pendingRemovals) {
-      this.subscriptions.delete(ticker);
+
+    for (let [ticker, listenersToRemove] of this.pendingRemovals) {
+      if (!this.subscriptions.has(ticker)) {
+        continue;
+      }
+      const currentListeners = this.subscriptions.get(ticker)!;
+      for (let listenerId of listenersToRemove) {
+        currentListeners.delete(listenerId);
+      }
+      if (currentListeners.size === 0) {
+        this.subscriptions.delete(ticker);
+      }
     }
+
     this.pendingAdditions.clear();
     this.pendingRemovals.clear();
   }

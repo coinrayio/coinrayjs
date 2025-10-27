@@ -227,8 +227,8 @@ export default class CoinrayCache extends EventEmitter {
     return api.fetchFirstCandleTime({coinraySymbol, resolution})
   }
 
-  subscribeTickers(coinraySymbols: string[], resetExisting = false) {
-    this.tickerSubscriptions.subscribe(coinraySymbols, resetExisting)
+  subscribeTickers(listenerId : string, coinraySymbols: string[], resetExisting = false) {
+    this.tickerSubscriptions.subscribe(listenerId, coinraySymbols, resetExisting)
     this.scheduleTickerRefresh()
   }
 
@@ -242,19 +242,47 @@ export default class CoinrayCache extends EventEmitter {
     }, 1000)
   }
 
-  unsubscribeAllTickers() {
-    this.tickerSubscriptions.unsubscribeAll()
+  unsubscribeAllTickers(listenerId : string) {
+    this.tickerSubscriptions.unsubscribeAll(listenerId)
     this.scheduleTickerRefresh()
   }
 
-  unsubscribeTickers(coinraySymbols: string[]) {
-    this.tickerSubscriptions.unsubscribe(coinraySymbols)
+  unsubscribeTickers(listenerId : string, coinraySymbols: string[]) {
+    this.tickerSubscriptions.unsubscribe(listenerId, coinraySymbols)
     this.scheduleTickerRefresh()
   }
 
   async flushTickerSubscriptions() {
-    await this.rootApi.subscribeTickers(Array.from(this.tickerSubscriptions.pendingAdditions), false, this.refreshMarketsFromTickers)
-    this.rootApi.unsubscribeTickers(Array.from(this.tickerSubscriptions.pendingRemovals), this.refreshMarketsFromTickers)
+    // Determine which tickers to (un)subscribe at the transport level based on listener deltas
+    const toSubscribe: string[] = []
+    const toUnsubscribe: string[] = []
+
+    // Anything present in pendingAdditions should be (idempotently) subscribed
+    for (const ticker of this.tickerSubscriptions.pendingAdditions.keys()) {
+      toSubscribe.push(ticker)
+    }
+
+    // For removals, only unsubscribe if no listeners remain after applying pending removals & additions
+    for (const [ticker, removeSet] of this.tickerSubscriptions.pendingRemovals.entries()) {
+      const current = new Set<string>(this.tickerSubscriptions.subscriptions.get(ticker) || [])
+      // Apply removals
+      for (const id of removeSet) current.delete(id)
+      // Apply any pending additions for same ticker
+      const addSet = this.tickerSubscriptions.pendingAdditions.get(ticker)
+      if (addSet) {
+        for (const id of addSet) current.add(id)
+      }
+      if (current.size === 0) {
+        toUnsubscribe.push(ticker)
+      }
+    }
+
+    if (toSubscribe.length) {
+      await this.rootApi.subscribeTickers(toSubscribe, false, this.refreshMarketsFromTickers)
+    }
+    if (toUnsubscribe.length) {
+      this.rootApi.unsubscribeTickers(toUnsubscribe, this.refreshMarketsFromTickers)
+    }
 
     this.tickerSubscriptions.processPendingChanges()
   }
