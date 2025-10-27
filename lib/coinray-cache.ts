@@ -227,7 +227,7 @@ export default class CoinrayCache extends EventEmitter {
     return api.fetchFirstCandleTime({coinraySymbol, resolution})
   }
 
-  subscribeTickers(listenerId : string, coinraySymbols: string[], resetExisting = false) {
+  subscribeTickers(listenerId: string, coinraySymbols: string[], resetExisting = false) {
     this.tickerSubscriptions.subscribe(listenerId, coinraySymbols, resetExisting)
     this.scheduleTickerRefresh()
   }
@@ -242,12 +242,12 @@ export default class CoinrayCache extends EventEmitter {
     }, 1000)
   }
 
-  unsubscribeAllTickers(listenerId : string) {
+  unsubscribeAllTickers(listenerId: string) {
     this.tickerSubscriptions.unsubscribeAll(listenerId)
     this.scheduleTickerRefresh()
   }
 
-  unsubscribeTickers(listenerId : string, coinraySymbols: string[]) {
+  unsubscribeTickers(listenerId: string, coinraySymbols: string[]) {
     this.tickerSubscriptions.unsubscribe(listenerId, coinraySymbols)
     this.scheduleTickerRefresh()
   }
@@ -302,7 +302,7 @@ export default class CoinrayCache extends EventEmitter {
         }
       }
       if (shouldDispatch) {
-        this.dispatchEvent("marketsUpdated")
+        this.dispatchEvent("tickersUpdated", {exchangeCode, coinraySymbols: tickers.map((t) => t.coinraySymbol)})
       }
     }
   }
