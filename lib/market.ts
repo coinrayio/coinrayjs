@@ -15,6 +15,7 @@ import {
 import Coinray from "./coinray";
 import Exchange from "./exchange";
 import {OrderType, Ticker} from "./types";
+
 export default class Market {
   public getExchange: () => Exchange
   public readonly api: Coinray;
@@ -231,10 +232,10 @@ export default class Market {
     this._lastPrice = ticker.lastPrice;
     this._askPrice = ticker.askPrice;
     this._bidPrice = ticker.bidPrice;
-    this.volume = ticker.baseVolume;
-    this.quoteVolume = ticker.quoteVolume;
-    this.btcVolume = ticker.btcVolume;
-    this.usdVolume = ticker.usdVolume;
+    this.volume = this.volume.plus(ticker.baseVolume);
+    this.quoteVolume = this.quoteVolume.plus(ticker.quoteVolume);
+    this.btcVolume = this.btcVolume.plus(ticker.btcVolume);
+    this.usdVolume = this.usdVolume.plus(ticker.usdVolume);
     this.openPrice = ticker.openPrice24h;
     this.highPrice = ticker.highPrice24h;
     this.lowPrice = ticker.lowPrice24h;
