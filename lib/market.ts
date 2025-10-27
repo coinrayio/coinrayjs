@@ -14,7 +14,7 @@ import {
 } from "./util";
 import Coinray from "./coinray";
 import Exchange from "./exchange";
-import {OrderType} from "./types";
+import {OrderType, Ticker} from "./types";
 export default class Market {
   public getExchange: () => Exchange
   public readonly api: Coinray;
@@ -27,14 +27,14 @@ export default class Market {
   public readonly baseLogoUrl: string;
   public readonly baseCurrency: string;
   public readonly exchangeCode: string;
-  public readonly volume: BigNumber;
-  public readonly quoteVolume: BigNumber;
-  public readonly btcVolume: BigNumber;
-  public readonly usdVolume: BigNumber;
+  public volume: BigNumber;
+  public quoteVolume: BigNumber;
+  public btcVolume: BigNumber;
+  public usdVolume: BigNumber;
   public readonly websocket: boolean;
-  public readonly openPrice: BigNumber;
-  public readonly highPrice: BigNumber;
-  public readonly lowPrice: BigNumber;
+  public openPrice: BigNumber;
+  public highPrice: BigNumber;
+  public lowPrice: BigNumber;
   public readonly precisionBase: number;
   public readonly precisionQuote: number;
   public readonly precisionPrice: number;
@@ -47,7 +47,7 @@ export default class Market {
   public readonly maxTrade?: BigNumber;
   public readonly makerFee: number;
   public readonly takerFee: number;
-  public readonly change: number;
+  public change: number;
   public readonly delistedOn: string;
   public readonly exchangeUrl: string;
   public readonly baseToUsd: BigNumber;
@@ -218,17 +218,26 @@ export default class Market {
     this.getPriceOverrides = getPriceOverrides
   }
 
-  updateTicker = ({lastPrice, bidPrice, askPrice}: any) => {
-    if (lastPrice) {
-      this._lastPrice = lastPrice
-    }
+  updateLastPrice = (lastPrice: BigNumber) => {
+    this._lastPrice = lastPrice;
+  }
 
-    if (askPrice) {
-      this._askPrice = askPrice
-    }
+  updateBidAsk = (bidPrice: BigNumber, askPrice: BigNumber) => {
+    this._bidPrice = bidPrice;
+    this._askPrice = askPrice;
+  }
 
-    if (bidPrice) {
-      this._bidPrice = bidPrice
-    }
+  updateTicker = (ticker: Ticker) => {
+    this._lastPrice = ticker.lastPrice;
+    this._askPrice = ticker.askPrice;
+    this._bidPrice = ticker.bidPrice;
+    this.volume = ticker.baseVolume;
+    this.quoteVolume = ticker.quoteVolume;
+    this.btcVolume = ticker.btcVolume;
+    this.usdVolume = ticker.usdVolume;
+    this.openPrice = ticker.openPrice24h;
+    this.highPrice = ticker.highPrice24h;
+    this.lowPrice = ticker.lowPrice24h;
+    this.change = this.openPrice.isZero() ? 0 : this.lastPrice.minus(this.openPrice).dividedBy(this.openPrice).multipliedBy(100).toNumber();
   }
 }

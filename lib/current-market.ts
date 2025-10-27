@@ -122,7 +122,7 @@ export default class CurrentMarket extends EventEmitter {
         const market = this.getMarket();
         const lastPrice = safeBigNumber(trades[0].price);
         if (!market._lastPrice.eq(lastPrice) || !this.prevTickers.lastPrice.eq(lastPrice)) {
-          market.updateTicker({lastPrice});
+          market.updateLastPrice(lastPrice);
           this.updatePrevTicker({lastPrice})
           this.dispatchEvent('marketUpdated', {market})
         }
@@ -141,7 +141,7 @@ export default class CurrentMarket extends EventEmitter {
         const isNew = !market._askPrice.eq(askPrice) || !market._bidPrice.eq(bidPrice)
         const isNewToMe = !this.prevTickers.askPrice.eq(askPrice) || !this.prevTickers.bidPrice.eq(bidPrice)
         if (isNew || isNewToMe) {
-          market.updateTicker({askPrice, bidPrice});
+          market.updateBidAsk(bidPrice, askPrice);
           this.updatePrevTicker({askPrice, bidPrice})
           this.dispatchEvent('marketUpdated', {market})
         }

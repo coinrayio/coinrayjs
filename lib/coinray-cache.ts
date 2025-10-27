@@ -3,6 +3,7 @@ import Exchange from "./exchange";
 import {filterMarkets} from "./util";
 import {CacheParams, Candle, CandleParam, CandlesParam, MarketMap, MarketParam, MarketQuery} from "./types";
 import EventEmitter from "./event-emitter"
+import TickerSubscriptions from "./ticker-subscriptions";
 
 interface ExchangeMap {
   [key: string]: Exchange;
@@ -16,6 +17,8 @@ export default class CoinrayCache extends EventEmitter {
   public refreshRate: number;
   private refreshTimeout: any;
   private _refreshingToken: any;
+  private tickerSubscriptions: TickerSubscriptions;
+  private tickerSubscriptionRefeshTimer: any;
   private _onTokenExpired: () => Promise<string>;
   private readonly onStoreCache
   private readonly apiCache
@@ -27,6 +30,8 @@ export default class CoinrayCache extends EventEmitter {
     this.exchanges = {}
     this.initialized = false
     this.refreshRate = refreshRate
+    this.tickerSubscriptions = new TickerSubscriptions()
+    this.tickerSubscriptionRefeshTimer = null
 
     this.rootApi.onTokenExpired(this.refreshToken)
 
@@ -220,6 +225,58 @@ export default class CoinrayCache extends EventEmitter {
   async fetchFirstCandleTime({coinraySymbol, resolution}: CandlesParam): Promise<Date> {
     const api = this.apiForSymbol(coinraySymbol)
     return api.fetchFirstCandleTime({coinraySymbol, resolution})
+  }
+
+  subscribeTickers(coinraySymbols: string[], resetExisting = false) {
+    this.tickerSubscriptions.subscribe(coinraySymbols, resetExisting)
+    this.scheduleTickerRefresh()
+  }
+
+  scheduleTickerRefresh() {
+    if (this.tickerSubscriptionRefeshTimer) {
+      clearTimeout(this.tickerSubscriptionRefeshTimer)
+    }
+    this.tickerSubscriptionRefeshTimer = setTimeout(async () => {
+      await this.flushTickerSubscriptions()
+      this.tickerSubscriptionRefeshTimer = null
+    }, 1000)
+  }
+
+  unsubscribeAllTickers() {
+    this.tickerSubscriptions.unsubscribeAll()
+    this.scheduleTickerRefresh()
+  }
+
+  unsubscribeTickers(coinraySymbols: string[]) {
+    this.tickerSubscriptions.unsubscribe(coinraySymbols)
+    this.scheduleTickerRefresh()
+  }
+
+  async flushTickerSubscriptions() {
+    await this.rootApi.subscribeTickers(Array.from(this.tickerSubscriptions.pendingAdditions), false, this.refreshMarketsFromTickers)
+    this.rootApi.unsubscribeTickers(Array.from(this.tickerSubscriptions.pendingRemovals), this.refreshMarketsFromTickers)
+
+    this.tickerSubscriptions.processPendingChanges()
+  }
+
+  refreshMarketsFromTickers = async (payload: any) => {
+    const {exchangeCode, tickers} = payload
+    const exchange = this.getExchange(exchangeCode)
+    if (exchange) {
+      let shouldDispatch = false
+      for (const ticker of tickers) {
+        if (this.tickerSubscriptions.has(ticker.coinraySymbol)) {
+          const market = exchange.getMarket(ticker.coinraySymbol)
+          if (market) {
+            market.updateTicker(ticker)
+            shouldDispatch = true
+          }
+        }
+      }
+      if (shouldDispatch) {
+        this.dispatchEvent("marketsUpdated")
+      }
+    }
   }
 
   async subscribeCandles({

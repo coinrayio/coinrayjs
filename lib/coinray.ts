@@ -73,8 +73,8 @@ export default class Coinray {
   private _socket?: Socket;
   private _transport: any;
 
-  private _tickerListeners: Map<any, Set<string>>;
-  private _tickerSymbols: Map<String, any>;
+  private _tickerListeners: Map<any, Set<string>> = new Map();
+  private _tickerSymbols: Map<String, any> = new Map();
   private _tradeListeners: any = {};
   private _tradeSnapshots: any = {};
   private _orderbookListeners: any = {};
@@ -300,7 +300,16 @@ export default class Coinray {
     });
   }
 
-  subscribeTickers = async (coinraySymbols: Array<string>, callback: (payload: any) => void) => {
+  subscribeTickers = async (coinraySymbols: Array<string>, reset: Boolean = false, callback: (payload: any) => void) => {
+    if (coinraySymbols.length === 0) {
+      return false
+    }
+
+    if (reset) {
+      this._tickerListeners.clear();
+      this._tickerSymbols.clear();
+    }
+
     if (this._tickerListeners.has(callback)) {
       let symbols = this._tickerListeners.get(callback);
       coinraySymbols.forEach((symbol) => symbols.add(symbol));
@@ -317,7 +326,7 @@ export default class Coinray {
 
     await this.connect();
     const channel = this.getChannel("tickers");
-    channel.push("subscribe", {coinraySymbols}, 5000);
+    channel.push("subscribe", {coinraySymbols, reset}, 5000);
 
     if (this.tickersSubscribed) {
       return callback
@@ -342,6 +351,13 @@ export default class Coinray {
     return callback
   };
 
+  unsubscribeAllTickers = () => {
+    this._tickerListeners.clear();
+    this._tickerSymbols.clear();
+    this.getChannel("tickers")
+        .push("unsubscribe", {all: true}, 5000)
+  }
+
   unsubscribeTickers = (coinraySymbols: Array<string>, callback?: (payload: any) => void) => {
     if (callback && this._tickerListeners.has(callback)) {
       let symbols = this._tickerListeners.get(callback);
@@ -362,11 +378,11 @@ export default class Coinray {
       }
 
       if (unsubscribedSymbols.length > 0) {
-        this.getChannel("trades")
+        this.getChannel("tickers")
             .push("unsubscribe", {coinraySymbols: unsubscribedSymbols}, 5000)
       }
     } else {
-      this._tradeListeners.get(callback).clear()
+      // this._tickerListeners.get(callback).clear()
     }
   };
 
@@ -1069,52 +1085,52 @@ export default class Coinray {
   }
 
   get = async (
-    endpoint: string,
-    {
-      apiEndpoint = undefined,
-      version = "v2",
-      headers = {},
-      params = {},
-      secret = ""
-    } = {}
+      endpoint: string,
+      {
+        apiEndpoint = undefined,
+        version = "v2",
+        headers = {},
+        params = {},
+        secret = ""
+      } = {}
   ): Promise<{ result: any; _headers: Record<string, string> }> =>
-    await this._request(endpoint, "GET", {
-      version,
-      apiEndpoint,
-      headers,
-      secret,
-      params
-    });
+      await this._request(endpoint, "GET", {
+        version,
+        apiEndpoint,
+        headers,
+        secret,
+        params
+      });
 
   post = async (
-    endpoint: string,
-    attributes
+      endpoint: string,
+      attributes
   ): Promise<{ result: any; _headers: Record<string, string> }> =>
-    await this._request(endpoint, "POST", attributes);
+      await this._request(endpoint, "POST", attributes);
 
   patch = async (
-    endpoint: string,
-    attributes
+      endpoint: string,
+      attributes
   ): Promise<{ result: any; _headers: Record<string, string> }> =>
-    await this._request(endpoint, "PATCH", attributes);
+      await this._request(endpoint, "PATCH", attributes);
 
   delete = async (
-    endpoint: string,
-    attributes
+      endpoint: string,
+      attributes
   ): Promise<{ result: any; _headers: Record<string, string> }> =>
-    await this._request(endpoint, "delete", attributes);
+      await this._request(endpoint, "delete", attributes);
 
   private async _request(
-    endpoint: string,
-    method: Method,
-    {
-      apiEndpoint,
-      version = "v2",
-      headers = {},
-      params = {},
-      body = {},
-      secret = ""
-    }
+      endpoint: string,
+      method: Method,
+      {
+        apiEndpoint,
+        version = "v2",
+        headers = {},
+        params = {},
+        body = {},
+        secret = ""
+      }
   ): Promise<{ result: any; _headers: Record<string, string> }> {
     const token = await this.getToken();
 
@@ -1159,13 +1175,13 @@ export default class Coinray {
         result = response.data;
       }
       const headersObj: Record<string, string> = Object.fromEntries(
-        Object.entries(response.headers as any).map(([k, v]) => [k, Array.isArray(v) ? v.join(', ') : String(v)])
+          Object.entries(response.headers as any).map(([k, v]) => [k, Array.isArray(v) ? v.join(', ') : String(v)])
       );
-      return { result, _headers: headersObj };
+      return {result, _headers: headersObj};
     } catch (error) {
-      const { response } = error;
+      const {response} = error;
       if (response) {
-        const { error } = response.data;
+        const {error} = response.data;
         throw new CoinrayError(error);
       } else {
         throw error;
