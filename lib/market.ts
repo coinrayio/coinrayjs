@@ -15,8 +15,9 @@ import {
 import Coinray from "./coinray";
 import Exchange from "./exchange";
 import {OrderType, Ticker} from "./types";
+import EventEmitter from "./event-emitter";
 
-export default class Market {
+export default class Market extends EventEmitter {
   public getExchange: () => Exchange
   public readonly api: Coinray;
   public readonly id: number;
@@ -121,6 +122,7 @@ export default class Market {
   }
 
   constructor(d: any, api: Coinray, exchange: Exchange) {
+    super()
     this.getExchange = () => exchange
     this.api = api;
     this.id = d.id;
@@ -221,21 +223,24 @@ export default class Market {
 
   updateLastPrice = (lastPrice: BigNumber) => {
     this._lastPrice = lastPrice;
+    this.change = this.openPrice.isZero() ? 0 : this.lastPrice.minus(this.openPrice).dividedBy(this.openPrice).multipliedBy(100).toNumber();
+    this.dispatchEvent("price")
   }
 
   updateBidAsk = (bidPrice: BigNumber, askPrice: BigNumber) => {
     this._bidPrice = bidPrice;
     this._askPrice = askPrice;
+
+    this.dispatchEvent("bidask")
   }
 
   updateTicker = (ticker: Ticker) => {
-    this._lastPrice = ticker.lastPrice;
-    this._askPrice = ticker.askPrice;
-    this._bidPrice = ticker.bidPrice;
-    
     this.openPrice = ticker.openPrice24h;
     this.highPrice = ticker.highPrice24h;
     this.lowPrice = ticker.lowPrice24h;
-    this.change = this.openPrice.isZero() ? 0 : this.lastPrice.minus(this.openPrice).dividedBy(this.openPrice).multipliedBy(100).toNumber();
+
+    this.updateBidAsk(ticker.bidPrice, ticker.askPrice)
+    this.updateLastPrice(ticker.lastPrice);
+    this.dispatchEvent("ticker")
   }
 }
