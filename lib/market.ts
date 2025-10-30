@@ -243,4 +243,37 @@ export default class Market extends EventEmitter {
     this.updateLastPrice(ticker.lastPrice);
     this.dispatchEvent("ticker")
   }
+
+  clone(): Market {
+    // Create a plain object snapshot of this instance
+    const snapshot: any = {
+      ...this,
+      volume: this.volume,
+      quoteVolume: this.quoteVolume,
+      btcVolume: this.btcVolume,
+      usdVolume: this.usdVolume,
+      openPrice: this.openPrice,
+      highPrice: this.highPrice,
+      lowPrice: this.lowPrice,
+      lastPrice: this._lastPrice,
+      askPrice: this._askPrice,
+      bidPrice: this._bidPrice,
+      maxBase: this.maxBase,
+      maxBaseMarket: this.maxBaseMarket,
+      maxQuote: this.maxQuote,
+      minTrade: this.minTrade,
+      maxTrade: this.maxTrade,
+      baseToUsd: this.baseToUsd,
+      quoteToUsd: this.quoteToUsd,
+    };
+
+    // Construct a new Market with the same API and exchange references
+    const cloned = new Market(snapshot, this.api, this.getExchange());
+
+    // Copy event listeners or other dynamic state if necessary
+    cloned.getPriceOverrides = this.getPriceOverrides;
+    cloned.listeners = this.listeners
+
+    return cloned;
+  }
 }
