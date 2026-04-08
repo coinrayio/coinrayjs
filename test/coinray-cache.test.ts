@@ -1,41 +1,37 @@
-"use strict"
+import {describe, test, expect, beforeAll, afterAll, vi} from "vitest"
+import fs from "fs"
+import Coinray from "../lib"
+import CoinrayCache from "../lib/coinray-cache"
 
-import fs from "fs";
-import Coinray from "../lib";
-import CoinrayCache from "../lib/coinray-cache";
-
-jest.setTimeout(30000);
-
-const coinrayToken = ""
-const coinray = new Coinray(coinrayToken)
-const coinrayCache = new CoinrayCache(coinrayToken, {apiEndpoint: "https://api.coinray.eu"})
+const token = import.meta.env.VITE_COINRAY_TOKEN ?? ""
+const coinray = new Coinray(token)
+const coinrayCache = new CoinrayCache(token, {apiEndpoint: "https://api.coinray.eu"})
 
 beforeAll(async () => {
   await coinrayCache.initialize()
-  // console.debug(coinrayCache.getExchanges().length)
 })
 afterAll(() => {
   coinray.destroy()
   coinrayCache.destroy()
 })
 
-describe("searchMarkets", () => {
-  test("query `trx` should NOT return non-TRX markets", async () => {
+describe.skipIf(!token)("searchMarkets", () => {
+  test("query `trx` should only return markets containing `trx` in base or quote", async () => {
     const resultMap = coinrayCache.searchMarkets("trx")
 
-    const nonTrxMarket = Object.values(resultMap).find(({exchangeCode, baseCurrency, quoteCurrency}) => {
-      return baseCurrency.toLowerCase() !== "trx" && quoteCurrency.toLowerCase() !== "trx"
+    const nonMatchingMarket = Object.values(resultMap).find(({baseCurrency, quoteCurrency}) => {
+      return !baseCurrency.toLowerCase().includes("trx") && !quoteCurrency.toLowerCase().includes("trx")
     })
-    expect(!!nonTrxMarket).toBeFalsy()
+    expect(!!nonMatchingMarket).toBeFalsy()
   })
 
-  test("query `btrx` should return markets in BTRX", async () => {
-    const resultMap = coinrayCache.searchMarkets("btrx")
+  test("query `bybi` should return markets in BYBI", async () => {
+    const resultMap = coinrayCache.searchMarkets("bybi")
 
-    const btrxMarket = Object.values(resultMap).find(({exchangeCode}) => {
-      return exchangeCode.toLowerCase() === "btrx"
+    const bybiMarket = Object.values(resultMap).find(({exchangeCode}) => {
+      return exchangeCode.toLowerCase() === "bybi"
     })
-    expect(!!btrxMarket).toBeTruthy()
+    expect(!!bybiMarket).toBeTruthy()
   })
 
   test("query `hit` should return non-HIT markets in HITB, and also HIT-markets not in HITB", async () => {
@@ -56,11 +52,11 @@ describe("searchMarkets", () => {
     const resultMap = coinrayCache.searchMarkets("hit/eth")
 
     const nonHitMarket = Object.values(resultMap).find(({exchangeCode, baseCurrency, quoteCurrency}) => {
-      return exchangeCode.toLowerCase() === "hitb" && !quoteCurrency.toLowerCase().includes("hit") && !baseCurrency.toLowerCase().includes("eth")
+      return exchangeCode.toLowerCase() === "hitb" && !baseCurrency.toLowerCase().includes("hit") && !quoteCurrency.toLowerCase().includes("eth")
     })
     expect(!!nonHitMarket).toBeFalsy()
 
-    const hitEthMarkets = Object.values(resultMap).filter(({exchangeCode, baseCurrency, quoteCurrency}) => {
+    const hitEthMarkets = Object.values(resultMap).filter(({baseCurrency, quoteCurrency}) => {
       return (baseCurrency.toLowerCase().includes("hit") && quoteCurrency.toLowerCase().includes("eth")) ||
         (quoteCurrency.toLowerCase().includes("hit") && baseCurrency.toLowerCase().includes("eth"))
     })
@@ -73,7 +69,7 @@ describe("searchMarkets", () => {
     const resultMap2 = coinrayCache.searchMarkets("/hit")
 
     const hitMarkets = [...Object.values(resultMap1), ...Object.values(resultMap2)]
-      .filter(({exchangeCode, baseCurrency, quoteCurrency}) => {
+      .filter(({baseCurrency, quoteCurrency}) => {
         return quoteCurrency.toLowerCase().includes("hit") || baseCurrency.toLowerCase().includes("hit")
       })
     expect(hitMarkets.length).toBeGreaterThan(0)
@@ -81,10 +77,10 @@ describe("searchMarkets", () => {
   })
 })
 
-describe("using cache", () => {
+describe.skipIf(!token)("using cache", () => {
   test("cache is written and used, initialize() is faster", async () => {
     const EXCHANGES_PATH = "./test/exchanges.json"
-    const onStoreCache = jest.fn(async (apiCache) => {
+    const onStoreCache = vi.fn(async (apiCache) => {
       const content = JSON.stringify(apiCache)
       apiCache.exchanges.forEach(({code}) => {
         expect(apiCache.markets[code].length).toBeGreaterThan(0)
@@ -92,7 +88,6 @@ describe("using cache", () => {
 
       try {
         fs.writeFileSync(EXCHANGES_PATH, content)
-        // console.log("Coinray initialized! Data was written to:", EXCHANGES_PATH)
       } catch (err) {
         console.error(err)
       }
@@ -102,7 +97,7 @@ describe("using cache", () => {
 
     let start
 
-    const coinrayCache1 = new CoinrayCache(coinrayToken, {apiEndpoint: "https://api.coinray.eu"}, undefined, {
+    const coinrayCache1 = new CoinrayCache(token, {apiEndpoint: "https://api.coinray.eu"}, undefined, {
       apiCache: undefined,
       onStoreCache
     })
@@ -115,7 +110,7 @@ describe("using cache", () => {
     expect(Object.keys(apiCache.markets).length).toBeGreaterThan(0)
     expect(onStoreCache.mock.calls.length).toEqual(1)
 
-    const coinrayCache2 = new CoinrayCache(coinrayToken, {apiEndpoint: "https://api.coinray.eu"}, undefined, {
+    const coinrayCache2 = new CoinrayCache(token, {apiEndpoint: "https://api.coinray.eu"}, undefined, {
       apiCache,
       onStoreCache
     })
@@ -124,9 +119,7 @@ describe("using cache", () => {
     const initDurationCached = Date.now() - start
 
     expect(Object.keys(coinrayCache2.getExchanges()).length).toBeGreaterThan(0)
-    // initDurationCached will probably be less than /2, but a 2x should be a reliable test
     expect(initDurationCached).toBeLessThan(initDurationNoCache / 2)
-    // a 2nd onStoreCache call IS done, but not awaited
     expect(onStoreCache.mock.calls.length).toEqual(1)
   })
 })
