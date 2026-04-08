@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import pkg from './package.json' with { type: 'json' }
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -38,5 +38,11 @@ export default defineConfig({
   // Inject package version as a constant you can export/use
   define: {
     __VERSION__: JSON.stringify(pkg.version),
+  },
+
+  test: {
+    root: '.',
+    include: ['test/**/*.test.ts'],
+    testTimeout: 30000,
   },
 })

@@ -662,7 +662,7 @@ export default class Coinray {
     const currentTime = new Date().getTime() / 1000
     const candles = [] as Candle[]
 
-    let minTime = end
+    let minTime = end + 1
     if (toBucketEnd(end, resolution) >= currentTime) {
       let openCandles = await this.getOpenCandles(useWebSocket, {
         version: "v2", params: {symbol: coinraySymbol, resolution: resolution,}

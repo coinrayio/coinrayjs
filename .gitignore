@@ -63,3 +63,9 @@ lib/**/*.js
 test/kraken-balance.test.ts
 test.js
 test/exchanges.json
+
+# Environment files #
+#####################
+.env
+.env.*
+!.env.example
