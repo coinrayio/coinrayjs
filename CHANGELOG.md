@@ -1,6 +1,7 @@
 # Version 2.0.11
 - Add FuturesSettings type and parsing on Market (tenor, margin, expiresAt, fundingIntervalSeconds, maxLeverage, groupName)
 - Add Market.groupName convenience getter
+- filterMarkets: skip markets where the queried property is null/undefined instead of throwing (enables filtering on optional fields like groupName)
 
 # Version 1.5.1
 - Remove the last candle fetch on fetch candles

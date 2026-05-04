@@ -469,7 +469,11 @@ export function filterMarkets(markets: MarketMap, marketQuery: string | MarketQu
     }
     const keywords = query.toLowerCase().split(/[\s]+/).filter(Boolean);
     filteredMarkets = _.pickBy(filteredMarkets, (market, _) => {
-      const matchTo = market[marketProperty].toLowerCase();
+      const value = market[marketProperty];
+      if (value === null || value === undefined) {
+        return false
+      }
+      const matchTo = value.toLowerCase();
 
       if (matcher && marketProperty === "fullDisplayName") {
         return !!matcher.exec(market[marketProperty])
