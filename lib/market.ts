@@ -14,7 +14,7 @@ import {
 } from "./util";
 import Coinray from "./coinray";
 import Exchange from "./exchange";
-import {OrderType, Ticker} from "./types";
+import {FuturesSettings, OrderType, Ticker} from "./types";
 import EventEmitter from "./event-emitter";
 
 export default class Market extends EventEmitter {
@@ -61,6 +61,7 @@ export default class Market extends EventEmitter {
   public _askPrice: BigNumber;
   public _bidPrice: BigNumber;
   public readonly updatedAt: string;
+  public readonly futuresSettings?: FuturesSettings;
   public getPriceOverrides: any
 
   public static Create(d: any, api: Coinray, exchange: Exchange): Market {
@@ -118,6 +119,15 @@ export default class Market extends EventEmitter {
     checkBigNumber(d.askPrice, true, "askPrice");
     checkBigNumber(d.bidPrice, true, "bidPrice");
     checkString(d.updatedAt, false, "updatedAt");
+    if (d.futuresSettings !== null && d.futuresSettings !== undefined) {
+      const fs = d.futuresSettings;
+      checkString(fs.tenor, false, "futuresSettings.tenor");
+      checkString(fs.margin, false, "futuresSettings.margin");
+      checkString(fs.expiresAt, true, "futuresSettings.expiresAt");
+      checkNumber(fs.fundingIntervalSeconds, true, "futuresSettings.fundingIntervalSeconds");
+      checkBigNumber(fs.maxLeverage, true, "futuresSettings.maxLeverage");
+      checkString(fs.groupName, true, "futuresSettings.groupName");
+    }
     return new Market(d, api, exchange);
   }
 
@@ -167,6 +177,17 @@ export default class Market extends EventEmitter {
     this._bidPrice = safeBigNumber(d.bidPrice);
     this._supportedOrderTypes = d.supportedOrderTypes;
     this.updatedAt = d.updatedAt;
+    if (d.futuresSettings !== null && d.futuresSettings !== undefined) {
+      const fs = d.futuresSettings;
+      this.futuresSettings = {
+        tenor: fs.tenor,
+        margin: fs.margin,
+        expiresAt: fs.expiresAt ? new Date(fs.expiresAt) : null,
+        fundingIntervalSeconds: fs.fundingIntervalSeconds ?? null,
+        maxLeverage: fs.maxLeverage !== null && fs.maxLeverage !== undefined ? safeBigNumber(fs.maxLeverage) : null,
+        groupName: fs.groupName ?? undefined,
+      };
+    }
   }
 
   get tradingDisabled() {
@@ -191,6 +212,10 @@ export default class Market extends EventEmitter {
 
   get isFutures() {
     return this.getExchange().isFutures
+  }
+
+  get groupName(): string | undefined {
+    return this.futuresSettings?.groupName
   }
 
   get fullDisplayName() {

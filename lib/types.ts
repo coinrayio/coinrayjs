@@ -59,6 +59,15 @@ export interface Trade {
   type: "sell" | "buy"
 }
 
+export interface FuturesSettings {
+  tenor: "perp_swap" | "dated_future" | "extended_perp",
+  margin: "usdt" | "usdc" | "usd" | "coin",
+  expiresAt?: Date | null,
+  fundingIntervalSeconds?: number | null,
+  maxLeverage?: BigNumber | null,
+  groupName?: string,
+}
+
 export interface Ticker {
   coinraySymbol: string,
   baseVolume: BigNumber,
