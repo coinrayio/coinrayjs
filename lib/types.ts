@@ -110,6 +110,7 @@ export enum ExchangeFeatures {
   UPDATE_LEVERAGE_ONLY_ON_OPEN_POSITIONS = "updateLeverageOnlyOnOpenPositions",
   FAST_CONNECT = "fastConnect",
   UNIFIED_BALANCE = "unifiedBalance",
+  NO_API_KEY_LINK = "noApiKeyLink",
 }
 
 export enum IpWhiteList {
