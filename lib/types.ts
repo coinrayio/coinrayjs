@@ -105,9 +105,15 @@ export enum OrderType {
 
 export enum ExchangeFeatures {
   HEDGE_MODE = "hedgeMode",
+  HEDGE_MODE_ONLY = "hedgeModeOnly",
   ORDER_QUOTE_AMOUNT = "orderQuoteAmount",
   MARKET_BUY_QUOTE_ONLY = "marketBuyQuoteOnly",
   UPDATE_LEVERAGE_ONLY_ON_OPEN_POSITIONS = "updateLeverageOnlyOnOpenPositions",
+  IGNORE_LEVERAGE_ON_QUICK_SYNC = "ignoreLeverageOnQuickSync",
+  MULTIPLE_MARGIN_TYPE_POSITIONS = "multipleMarginTypePositions",
+  SET_LEVERAGE_NOT_AVAILABLE = "setLeverageNotAvailable",
+  SET_MARGIN_TYPE_NOT_AVAILABLE = "setMarginTypeNotAvailable",
+  FIXED_CROSSED_LEVERAGE = "fixedCrossedLeverage",
   FAST_CONNECT = "fastConnect",
   UNIFIED_BALANCE = "unifiedBalance",
   NO_API_KEY_LINK = "noApiKeyLink",
