@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'coinrayjs',
   tagline: 'Official JavaScript client library for Coinray.io',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/favicon.png',
 
   future: {v4: true},
 
@@ -53,6 +53,10 @@ const config: Config = {
     colorMode: {respectPrefersColorScheme: true},
     navbar: {
       title: 'coinrayjs',
+      logo: {
+        alt: 'Coinray',
+        src: 'img/coinray-logo.png',
+      },
       items: [
         {type: 'docSidebar', sidebarId: 'guides', position: 'left', label: 'Guides'},
         {type: 'docSidebar', sidebarId: 'api', position: 'left', label: 'API Reference'},
