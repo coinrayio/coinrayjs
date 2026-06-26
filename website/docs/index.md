@@ -32,7 +32,7 @@ const handle = coinray.subscribeTrades(
 - **[Getting started](./getting-started.md)** — install, authenticate, and manage the connection lifecycle.
 - **[Real-time market data](./realtime-data.md)** — subscribe to tickers, trades, order book, and candles.
 - **[Historical candles](./historical-candles.md)** — fetch OHLC history for charts and backtests.
-- **[Trading & accounts](./trading.md)** — wrap API keys, place/cancel orders, read balances and positions.
+- **[Trading & accounts](./trading.md)** — wrap API keys, place/cancel orders, read balances and positions. _(order builders are a paid addon)_
 - **[API Reference](./api/index.md)** — generated from the TypeScript types.
 - **[Playground](/playground)** — run live API calls from your browser with your own token.
 
