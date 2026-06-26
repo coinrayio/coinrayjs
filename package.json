@@ -16,6 +16,7 @@
     "preview": "vite preview",
     "dev": "vite",
     "build": "vite build && tsc -p tsconfig.types.json",
+    "docs": "typedoc",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -38,6 +39,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.2",
+    "typedoc": "^0.28.19",
     "typescript": "~5.9.3",
     "vite": "^7.1.7",
     "vitest": "^4.1.3"

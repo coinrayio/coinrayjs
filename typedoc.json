@@ -1,0 +1,9 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["lib/index.ts"],
+  "tsconfig": "tsconfig.types.json",
+  "out": "docs",
+  "name": "coinrayjs",
+  "readme": "README.md",
+  "includeVersion": true
+}

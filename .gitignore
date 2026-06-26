@@ -69,3 +69,6 @@ test/exchanges.json
 .env
 .env.*
 !.env.example
+
+# generated API docs
+docs/
