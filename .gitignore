@@ -70,5 +70,7 @@ test/exchanges.json
 .env.*
 !.env.example
 
-# generated API docs
-docs/
+# Docusaurus docs site build artifacts
+website/build/
+website/.docusaurus/
+website/docs/api/

@@ -1,4 +1,4 @@
-name: Deploy API docs
+name: Deploy docs
 
 on:
   push:
@@ -25,10 +25,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      # Build the library first so the docs site's `coinrayjs` (file:..) dep resolves.
       - run: yarn install --frozen-lockfile
-      - run: yarn docs
+      - run: yarn build
+      - name: Build docs site
+        working-directory: website
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: docs
+          path: website/build
       - id: deploy
         uses: actions/deploy-pages@v4
