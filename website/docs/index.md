@@ -16,6 +16,12 @@ npm install coinrayjs
 yarn add coinrayjs
 ```
 
+:::info Paid product
+Coinray API access requires a paid plan (you need a token), and the [trading order
+builders](./trading.md) require an additional paid addon. See [Getting
+started](./getting-started.md) for details.
+:::
+
 ```js
 import Coinray from "coinrayjs";
 

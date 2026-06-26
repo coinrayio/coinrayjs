@@ -13,6 +13,13 @@ npm install coinrayjs
 
 coinrayjs ships ES modules and TypeScript types. It works in the browser and in Node.
 
+:::info Paid product
+Coinray API access is a **paid product** — you need an active Coinray plan to obtain a token.
+Real-time streaming and candle history are included; the [trading order
+builders](./trading.md) require an **additional paid addon** on top. Contact Coinray to get
+access.
+:::
+
 ## Create a client
 
 The `Coinray` client takes a Coinray JWT token. Endpoints default to Coinray's production

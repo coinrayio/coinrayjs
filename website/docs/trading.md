@@ -6,10 +6,11 @@ title: Trading & accounts
 # Trading & accounts
 
 :::info Paid addon required
-The order-builder module (`LimitOrder`, `MarketOrder`, `OcoOrder`, `StopLimitOrder`,
-`LimitLadderOrder`) is **not part of the default Coinray API integration** — it requires a paid
-addon. Market data, historical candles, and real-time streaming work without it; placing orders
-through the builders does not. Contact Coinray to enable trading on your account.
+Coinray API access is already a [paid product](./getting-started.md). The order-builder module
+(`LimitOrder`, `MarketOrder`, `OcoOrder`, `StopLimitOrder`, `LimitLadderOrder`) is **not part of
+the default API integration** — it requires an **additional paid addon** on top of your plan.
+Market data, historical candles, and real-time streaming work without it; placing orders through
+the builders does not. Contact Coinray to enable trading on your account.
 :::
 
 Trading in coinrayjs goes through the **order-builder module** — `LimitOrder`, `MarketOrder`,
