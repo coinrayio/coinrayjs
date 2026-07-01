@@ -25,7 +25,11 @@ started](./getting-started.md) for details.
 ```js
 import Coinray from "coinrayjs";
 
-const coinray = new Coinray(token);
+const coinray = new Coinray(token, {
+  apiEndpoint: "https://gateway.coinray.eu",
+  orderEndpoint: "https://gateway.coinray.eu",
+  websocketEndpoint: "wss://gateway.coinray.eu/v1",
+});
 
 const handle = coinray.subscribeTrades(
   {coinraySymbol: "BINA_BTC_USDT"},

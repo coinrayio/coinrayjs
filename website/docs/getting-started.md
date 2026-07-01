@@ -22,19 +22,17 @@ access.
 
 ## Create a client
 
-The `Coinray` client takes a Coinray JWT token. Endpoints default to Coinray's production
-infrastructure, but you can override them.
+The `Coinray` client takes a Coinray JWT token. Point every endpoint at the Coinray
+gateway (`gateway.coinray.eu`) — it fronts the REST API, order placement, and the
+WebSocket stream.
 
 ```js
 import Coinray from "coinrayjs";
 
-const coinray = new Coinray(token);
-
-// or with custom endpoints
 const coinray = new Coinray(token, {
-  apiEndpoint: "https://api.coinray.eu",
-  orderEndpoint: "https://api.coinray.eu",
-  websocketEndpoint: "wss://ws.coinray.eu/v1",
+  apiEndpoint: "https://gateway.coinray.eu",
+  orderEndpoint: "https://gateway.coinray.eu",
+  websocketEndpoint: "wss://gateway.coinray.eu/v1",
 });
 ```
 
@@ -83,7 +81,7 @@ If you need the list of exchanges and their markets (and want them kept fresh), 
 ```js
 import {CoinrayCache} from "coinrayjs";
 
-const cache = new CoinrayCache(token, {apiEndpoint: "https://api.coinray.eu"});
+const cache = new CoinrayCache(token, {apiEndpoint: "https://gateway.coinray.eu"});
 await cache.initialize();
 
 const exchanges = cache.getExchanges();
