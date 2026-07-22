@@ -68,6 +68,14 @@ export interface FuturesSettings {
   groupName?: string,
 }
 
+export interface TradingSession {
+  phase: string,
+  timezone: string,
+  days: number[],
+  open: string,
+  close: string,
+}
+
 export interface Ticker {
   coinraySymbol: string,
   baseVolume: BigNumber,

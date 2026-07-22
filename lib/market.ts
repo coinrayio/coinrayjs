@@ -14,7 +14,7 @@ import {
 } from "./util";
 import Coinray from "./coinray";
 import Exchange from "./exchange";
-import {FuturesSettings, OrderType, Ticker} from "./types";
+import {FuturesSettings, OrderType, Ticker, TradingSession} from "./types";
 import EventEmitter from "./event-emitter";
 
 export default class Market extends EventEmitter {
@@ -62,6 +62,10 @@ export default class Market extends EventEmitter {
   public _bidPrice: BigNumber;
   public readonly updatedAt: string;
   public readonly futuresSettings?: FuturesSettings;
+  public readonly symbolTv?: string;
+  public readonly tradingSessions?: TradingSession[] | null;
+  public readonly syntheticTrades: boolean;
+  private readonly _groupName?: string | null;
   public getPriceOverrides: any
 
   public static Create(d: any, api: Coinray, exchange: Exchange): Market {
@@ -119,6 +123,8 @@ export default class Market extends EventEmitter {
     checkBigNumber(d.askPrice, true, "askPrice");
     checkBigNumber(d.bidPrice, true, "bidPrice");
     checkString(d.updatedAt, false, "updatedAt");
+    checkString(d.symbolTv, true, "symbolTv");
+    checkString(d.groupName, true, "groupName");
     if (d.futuresSettings !== null && d.futuresSettings !== undefined) {
       const fs = d.futuresSettings;
       checkString(fs.tenor, false, "futuresSettings.tenor");
@@ -177,6 +183,10 @@ export default class Market extends EventEmitter {
     this._bidPrice = safeBigNumber(d.bidPrice);
     this._supportedOrderTypes = d.supportedOrderTypes;
     this.updatedAt = d.updatedAt;
+    this.symbolTv = d.symbolTv;
+    this._groupName = d.groupName;
+    this.tradingSessions = d.tradingSessions ?? null;
+    this.syntheticTrades = d.syntheticTrades ?? false;
     if (d.futuresSettings !== null && d.futuresSettings !== undefined) {
       const fs = d.futuresSettings;
       this.futuresSettings = {
@@ -215,7 +225,7 @@ export default class Market extends EventEmitter {
   }
 
   get groupName(): string | undefined {
-    return this.futuresSettings?.groupName
+    return this._groupName ?? this.futuresSettings?.groupName
   }
 
   get fullDisplayName() {
@@ -290,6 +300,7 @@ export default class Market extends EventEmitter {
       maxTrade: this.maxTrade,
       baseToUsd: this.baseToUsd,
       quoteToUsd: this.quoteToUsd,
+      groupName: this._groupName,
     };
 
     // Construct a new Market with the same API and exchange references
