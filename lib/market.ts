@@ -65,6 +65,7 @@ export default class Market extends EventEmitter {
   public readonly symbolTv?: string;
   public readonly tradingSessions?: TradingSession[] | null;
   public readonly syntheticTrades: boolean;
+  public marketCap: BigNumber;
   private readonly _groupName?: string | null;
   public getPriceOverrides: any
 
@@ -125,6 +126,7 @@ export default class Market extends EventEmitter {
     checkString(d.updatedAt, false, "updatedAt");
     checkString(d.symbolTv, true, "symbolTv");
     checkString(d.groupName, true, "groupName");
+    checkBigNumber(d.marketCap, true, "marketCap");
     if (d.futuresSettings !== null && d.futuresSettings !== undefined) {
       const fs = d.futuresSettings;
       checkString(fs.tenor, false, "futuresSettings.tenor");
@@ -187,6 +189,7 @@ export default class Market extends EventEmitter {
     this._groupName = d.groupName;
     this.tradingSessions = d.tradingSessions ?? null;
     this.syntheticTrades = d.syntheticTrades ?? false;
+    this.marketCap = safeBigNumber(d.marketCap);
     if (d.futuresSettings !== null && d.futuresSettings !== undefined) {
       const fs = d.futuresSettings;
       this.futuresSettings = {
@@ -287,6 +290,7 @@ export default class Market extends EventEmitter {
       quoteVolume: this.quoteVolume,
       btcVolume: this.btcVolume,
       usdVolume: this.usdVolume,
+      marketCap: this.marketCap,
       openPrice: this.openPrice,
       highPrice: this.highPrice,
       lowPrice: this.lowPrice,
