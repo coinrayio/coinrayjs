@@ -36,6 +36,26 @@ const coinray = new Coinray(token, {
 });
 ```
 
+## Get a token
+
+Create an API key in the Coinray portal at [app.coinray.eu/api_keys](https://app.coinray.eu/api_keys).
+The key gives you a `client_id` and `client_secret`. Exchange them for a JWT with the
+client-credentials endpoint:
+
+```bash
+curl -X POST https://app.coinray.eu/oauth/token \
+  -d client_id=YOUR_KEY_ID \
+  -d client_secret=YOUR_SECRET
+```
+
+```json
+{ "access_token": "eyJ...", "token_type": "Bearer", "expires_in": 2592000 }
+```
+
+Tokens are valid for **30 days** on paid plans (trial keys expire 7 days after registration).
+There is no refresh token: call the endpoint again to get a fresh one. Keep the
+`client_secret` on your backend, never in the browser.
+
 ## Token expiry & refresh
 
 Coinray tokens expire. Register a refresh callback and the client will call it when the token
@@ -43,7 +63,7 @@ is close to expiring, then keep using the new token. Start the periodic check wi
 
 ```js
 coinray.onTokenExpired(async () => {
-  const newToken = await myBackend.fetchFreshCoinrayToken();
+  const newToken = await myBackend.fetchFreshCoinrayToken(); // calls POST /oauth/token
   return newToken; // the client adopts it automatically
 });
 
