@@ -56,6 +56,24 @@ Tokens are valid for **30 days** on paid plans (trial keys expire 7 days after r
 There is no refresh token: call the endpoint again to get a fresh one. Keep the
 `client_secret` on your backend, never in the browser.
 
+A minimal Node helper that does the exchange, e.g. on your backend:
+
+```js
+async function fetchFreshCoinrayToken() {
+  const res = await fetch("https://app.coinray.eu/oauth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.COINRAY_KEY_ID,
+      client_secret: process.env.COINRAY_SECRET,
+    }),
+  });
+  if (!res.ok) throw new Error(`coinray token request failed: ${res.status}`);
+  const { access_token } = await res.json();
+  return access_token;
+}
+```
+
 ## Token expiry & refresh
 
 Coinray tokens expire. Register a refresh callback and the client will call it when the token
@@ -63,7 +81,7 @@ is close to expiring, then keep using the new token. Start the periodic check wi
 
 ```js
 coinray.onTokenExpired(async () => {
-  const newToken = await myBackend.fetchFreshCoinrayToken(); // calls POST /oauth/token
+  const newToken = await myBackend.fetchFreshCoinrayToken(); // see "Get a token" above
   return newToken; // the client adopts it automatically
 });
 
