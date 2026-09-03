@@ -16,7 +16,6 @@ import Coinray from "./coinray";
 import {ExchangeFeatures, IpWhiteList, MarketMap, OrderType} from "./types";
 import _ from "lodash"
 import Market from "./market";
-import {bn} from "./bn";
 
 export class ExtraSetting {
   public readonly key: string;
@@ -194,7 +193,7 @@ export default class Exchange {
         return safeBigNumber(usdValue).dividedBy(market.quoteToUsd)
       }
     }
-    return bn(0)
+    return new BigNumber(0)
   }
 
   getUsdPrice(value, currency) {
@@ -205,7 +204,7 @@ export default class Exchange {
         return market.quoteToUsd.multipliedBy(value)
       }
     }
-    return bn(0)
+    return new BigNumber(0)
   }
 
   getMarket(coinraySymbol) {

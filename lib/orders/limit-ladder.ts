@@ -5,7 +5,6 @@ import _ from "lodash"
 import {correctNumberPrecision, safeBigNumber, safeInteger} from "../util";
 import BaseOrder from "./base";
 import Coinray from "../coinray";
-import {bn} from "../bn";
 
 export enum PriceScales {
   LINEAR = "LINEAR",
@@ -227,9 +226,9 @@ export default class LimitLadderOrder extends BaseOrder {
     if (orders.length > 0) {
       this.baseAmount = _.reduce(orders, (sum, order) => {
         return sum.plus(order.baseAmount)
-      }, bn(0))
+      }, new BigNumber(0))
     } else {
-      this.baseAmount = bn(0)
+      this.baseAmount = new BigNumber(0)
     }
   }
 
@@ -241,9 +240,9 @@ export default class LimitLadderOrder extends BaseOrder {
     if (orders.length > 0) {
       this.quoteAmount = _.reduce(orders, (sum, order) => {
         return sum.plus(order.quoteAmount)
-      }, bn(0))
+      }, new BigNumber(0))
     } else {
-      this.quoteAmount = bn(0)
+      this.quoteAmount = new BigNumber(0)
     }
   }
 

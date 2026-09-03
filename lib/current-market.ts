@@ -2,9 +2,9 @@ import CoinrayCache from "./coinray-cache";
 import EventEmitter from "./event-emitter";
 import _ from "lodash";
 import {OrderBookSide} from "./types";
+import BigNumber from "bignumber.js";
 import {MarketNotFoundError} from "./errors";
 import {safeBigNumber} from "./util";
-import {bn} from "./bn";
 
 export const TRADES_DELAY_THRESHOLD = 30 * 1000
 
@@ -17,9 +17,9 @@ export default class CurrentMarket extends EventEmitter {
   private tradesDelayed: boolean;
   private maxTrades: number;
   private prevTickers = {
-    lastPrice: bn(0),
-    askPrice: bn(0),
-    bidPrice: bn(0)
+    lastPrice: new BigNumber(0),
+    askPrice: new BigNumber(0),
+    bidPrice: new BigNumber(0)
   }
 
   constructor(coinrayCache: CoinrayCache, options = {} as any) {
@@ -204,7 +204,7 @@ export default class CurrentMarket extends EventEmitter {
     const update = (side, updates: OrderBookSide) => {
       _.forEach(updates, (quantity, price) => {
         if (quantity > 0) {
-          side[price] = {price: bn(price), quantity}
+          side[price] = {price: new BigNumber(price), quantity}
         } else {
           delete side[price]
         }

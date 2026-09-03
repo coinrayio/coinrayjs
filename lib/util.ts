@@ -3,7 +3,6 @@ import BigNumber from "bignumber.js";
 import {MarketMap, MarketQuery} from "./types";
 import {crypto as coinrayCrypto } from "./crypto";
 import moment, {Moment} from "moment";
-import {bn} from "./bn";
 
 // --- base64url helpers without external deps ---
 function toBase64Url(b64: string): string {
@@ -196,13 +195,13 @@ export function safeBigNumber(d: string | number | BigNumber): BigNumber {
   if (BigNumber.isBigNumber(d)) {
     return d
   } else if (!d) {
-    return bn("0")
+    return new BigNumber("0")
   }
-  return bn(d)
+  return new BigNumber(d)
 }
 
 export function correctNumberPrecision(precision, value) {
-  return bn(value).toFixed(precision > 0 ? precision : 0)
+  return new BigNumber(value).toFixed(precision > 0 ? precision : 0)
 }
 
 export function safeFloat(d: string | number): number {
