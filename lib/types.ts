@@ -76,21 +76,46 @@ export interface TradingSession {
   close: string,
 }
 
+// Websocket ticker. Uppercase keys are 24h, lowercase are the current 1s candle (backend common::Ticker).
 export interface Ticker {
   coinraySymbol: string,
-  baseVolume: BigNumber,
-  quoteVolume: BigNumber,
-  btcVolume: BigNumber,
-  usdVolume: BigNumber,
+  baseVolume: BigNumber, // 24h (BV)
+  quoteVolume: BigNumber, // 24h (QV)
+  btcVolume: BigNumber, // 24h (B)
+  usdVolume: BigNumber, // 24h (U)
   openPrice24h: BigNumber,
   highPrice24h: BigNumber,
   lowPrice24h: BigNumber,
+  baseVolume1s: BigNumber, // bv
+  quoteVolume1s: BigNumber, // qv
   openPrice1s: BigNumber,
   highPrice1s: BigNumber,
   lowPrice1s: BigNumber,
   lastPrice: BigNumber,
   askPrice: BigNumber,
   bidPrice: BigNumber,
+}
+
+// 24h ticker from GET /api/v1/tickers, applied with Market.applySnapshot
+export interface TickerSnapshot {
+  coinraySymbol: string,
+  lastPrice: BigNumber,
+  askPrice: BigNumber,
+  bidPrice: BigNumber,
+  openPrice24h: BigNumber,
+  highPrice24h: BigNumber,
+  lowPrice24h: BigNumber,
+  baseVolume: BigNumber,
+  quoteVolume: BigNumber,
+  btcVolume: BigNumber,
+  usdVolume: BigNumber,
+  baseToUsd: BigNumber,
+  quoteToUsd: BigNumber,
+  marketCap: BigNumber,
+}
+
+export interface MarketsUpdatedEvent {
+  exchangeCodes: string[]
 }
 
 export interface TradeList {

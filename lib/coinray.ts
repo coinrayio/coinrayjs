@@ -29,6 +29,7 @@ import {
   OrderBookSide,
   SmartOrderParams,
   Ticker,
+  TickerSnapshot,
   Trade,
   UpdateOrderParams,
 } from "./types";
@@ -44,6 +45,7 @@ export class CoinrayError extends Error {
   errorCode: number;
   errorMessage: string;
   exchange: any;
+  status?: number;
 
   constructor({code, message, exchange}) {
     super("Request failed");
@@ -824,6 +826,26 @@ export default class Coinray {
     return markets
   };
 
+  // Response: {CODE: [compact ticker]}. Max 10 codes per call; sorted so CDN cache keys match across users.
+  fetchTickers = async (exchangeCodes: string[]): Promise<{ [exchangeCode: string]: TickerSnapshot[] }> => {
+    const {result: {tickers}} = await this.get("tickers", {
+      version: "v1",
+      params: {exchanges: [...exchangeCodes].sort().join(",")}
+    })
+    return _.mapValues(tickers || {}, (list) => list.map(Coinray._parseTickerSnapshot))
+  };
+
+  // 304 (etag matched) resolves with markets: null.
+  fetchStaticMarkets = async (exchangeCode: string, etag?: string): Promise<{ markets: Array<object> | null, etag?: string }> => {
+    const {result, _headers, _status} = await this.get("markets/static", {
+      version: "v1",
+      params: {exchange: exchangeCode},
+      headers: etag ? {"If-None-Match": etag} : {}
+    })
+    if (_status === 304) return {markets: null, etag}
+    return {markets: result.markets, etag: _headers.etag}
+  };
+
   createCredential = async (deviceId: string, password: string) => {
     const publicKey = await this.publicKey();
 
@@ -1093,7 +1115,7 @@ export default class Coinray {
         params = {},
         secret = ""
       } = {}
-  ): Promise<{ result: any; _headers: Record<string, string> }> =>
+  ): Promise<{ result: any; _headers: Record<string, string>; _status?: number }> =>
       await this._request(endpoint, "GET", {
         version,
         apiEndpoint,
@@ -1105,19 +1127,19 @@ export default class Coinray {
   post = async (
       endpoint: string,
       attributes
-  ): Promise<{ result: any; _headers: Record<string, string> }> =>
+  ): Promise<{ result: any; _headers: Record<string, string>; _status?: number }> =>
       await this._request(endpoint, "POST", attributes);
 
   patch = async (
       endpoint: string,
       attributes
-  ): Promise<{ result: any; _headers: Record<string, string> }> =>
+  ): Promise<{ result: any; _headers: Record<string, string>; _status?: number }> =>
       await this._request(endpoint, "PATCH", attributes);
 
   delete = async (
       endpoint: string,
       attributes
-  ): Promise<{ result: any; _headers: Record<string, string> }> =>
+  ): Promise<{ result: any; _headers: Record<string, string>; _status?: number }> =>
       await this._request(endpoint, "delete", attributes);
 
   private async _request(
@@ -1131,7 +1153,7 @@ export default class Coinray {
         body = {},
         secret = ""
       }
-  ): Promise<{ result: any; _headers: Record<string, string> }> {
+  ): Promise<{ result: any; _headers: Record<string, string>; _status?: number }> {
     const token = await this.getToken();
 
     const paramString = Object.entries(params).length > 0 ? '?' + Object.entries(params).map(([key, val]) => val ? `${key}=${val}` : undefined).filter(Boolean).join('&') : "";
@@ -1161,7 +1183,8 @@ export default class Coinray {
         "Cr-Client-version": VERSION,
         ...headers
       },
-      data: method === "GET" ? undefined : JSON.stringify(body)
+      data: method === "GET" ? undefined : JSON.stringify(body),
+      validateStatus: (status) => (status >= 200 && status < 300) || status === 304
     } as AxiosRequestConfig;
 
     try {
@@ -1177,12 +1200,13 @@ export default class Coinray {
       const headersObj: Record<string, string> = Object.fromEntries(
           Object.entries(response.headers as any).map(([k, v]) => [k, Array.isArray(v) ? v.join(', ') : String(v)])
       );
-      return {result, _headers: headersObj};
+      return {result, _headers: headersObj, _status: response.status};
     } catch (error) {
       const {response} = error;
       if (response) {
-        const {error} = response.data;
-        throw new CoinrayError(error);
+        const coinrayError = new CoinrayError(response.data?.error || {});
+        coinrayError.status = response.status;
+        throw coinrayError;
       } else {
         throw error;
       }
@@ -1271,7 +1295,8 @@ export default class Coinray {
   private static _parseTicker(ticker): Ticker {
     return {
       askPrice: safeBigNumber(ticker.a),
-      baseVolume: safeBigNumber(ticker.bv),
+      baseVolume: safeBigNumber(ticker.BV),
+      baseVolume1s: safeBigNumber(ticker.bv),
       bidPrice: safeBigNumber(ticker.b),
       btcVolume: safeBigNumber(ticker.B),
       coinraySymbol: ticker.s,
@@ -1282,8 +1307,28 @@ export default class Coinray {
       lowPrice24h: safeBigNumber(ticker.L),
       openPrice1s: safeBigNumber(ticker.o),
       openPrice24h: safeBigNumber(ticker.O),
-      quoteVolume: safeBigNumber(ticker.qv),
+      quoteVolume: safeBigNumber(ticker.QV),
+      quoteVolume1s: safeBigNumber(ticker.qv),
       usdVolume: safeBigNumber(ticker.U)
+    }
+  }
+
+  private static _parseTickerSnapshot(t): TickerSnapshot {
+    return {
+      coinraySymbol: t.s,
+      lastPrice: safeBigNumber(t.c),
+      askPrice: safeBigNumber(t.a),
+      bidPrice: safeBigNumber(t.b),
+      openPrice24h: safeBigNumber(t.O),
+      highPrice24h: safeBigNumber(t.H),
+      lowPrice24h: safeBigNumber(t.L),
+      baseVolume: safeBigNumber(t.BV),
+      quoteVolume: safeBigNumber(t.QV),
+      btcVolume: safeBigNumber(t.B),
+      usdVolume: safeBigNumber(t.U),
+      baseToUsd: safeBigNumber(t.bu),
+      quoteToUsd: safeBigNumber(t.qu),
+      marketCap: safeBigNumber(t.mc),
     }
   }
 

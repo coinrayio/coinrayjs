@@ -59,7 +59,22 @@ class TickerSubscriptions {
         this.pendingRemovals.get(ticker)!.add(listenerId);
       }
     }
-    this.pendingAdditions.clear();
+    // Only drop this listener's pending additions; other listeners' must survive.
+    for (let [ticker, listeners] of this.pendingAdditions) {
+      listeners.delete(listenerId);
+      if (listeners.size === 0) {
+        this.pendingAdditions.delete(ticker);
+      }
+    }
+  }
+
+  // Exchange codes (coinraySymbol prefix) of the subscribed tickers.
+  exchangeCodes(): Set<string> {
+    const codes = new Set<string>();
+    for (let ticker of this.subscriptions.keys()) {
+      codes.add(ticker.split("_")[0]);
+    }
+    return codes;
   }
 
   processPendingChanges() {

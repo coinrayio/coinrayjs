@@ -37,33 +37,38 @@ export class ApiKeySettings {
 
 export default class Exchange {
   public readonly api: Coinray;
-  public readonly id: number;
-  public readonly name: string;
-  public readonly code: string;
-  public readonly websocket: boolean;
-  public readonly active: boolean;
-  public readonly aliasedTo: string | null;
-  public readonly tradingEnabled: boolean;
-  public readonly tradingEnabledFrom: string;
-  public readonly isFutures: boolean;
-  public readonly isDex: boolean;
-  public readonly logo: string;
-  public readonly btcVolume: BigNumber;
-  public readonly usdVolume: BigNumber;
-  public readonly totalMarkets: number;
-  public readonly quoteCurrencies: string[] | null;
-  public readonly supportedFeatures: string[] | null;
-  public readonly supportedResolutions: ExchangeFeatures[] | null;
-  public readonly supportedOrderTypes: OrderType[] | null;
-  public readonly baseCurrencyDominance: object | null;
-  public readonly apiKeySettings: ApiKeySettings;
-  public readonly apiEndpoint: string;
-  public readonly websocketEndpoint: string;
+  public id: number;
+  public name: string;
+  public code: string;
+  public websocket: boolean;
+  public active: boolean;
+  public aliasedTo: string | null;
+  public tradingEnabled: boolean;
+  public tradingEnabledFrom: string;
+  public isFutures: boolean;
+  public isDex: boolean;
+  public logo: string;
+  public btcVolume: BigNumber;
+  public usdVolume: BigNumber;
+  public totalMarkets: number;
+  public quoteCurrencies: string[] | null;
+  public supportedFeatures: string[] | null;
+  public supportedResolutions: ExchangeFeatures[] | null;
+  public supportedOrderTypes: OrderType[] | null;
+  public baseCurrencyDominance: object | null;
+  public apiKeySettings: ApiKeySettings;
+  public apiEndpoint: string;
+  public websocketEndpoint: string;
 
   public markets: MarketMap;
   public exchangeSymbols: {};
 
   public static Create(d: any, api: Coinray): Exchange {
+    Exchange.check(d);
+    return new Exchange(d, api);
+  }
+
+  private static check(d: any) {
     if (d === null || d === undefined) {
       throwNull2NonNull(d);
     } else if (typeof (d) !== 'object') {
@@ -107,11 +112,23 @@ export default class Exchange {
     if (d.supportedResolutions === undefined) {
       d.supportedResolutions = null;
     }
-    return new Exchange(d, api);
   }
 
   private constructor(d: any, api: Coinray) {
     this.api = api;
+    this.markets = {};
+    this.exchangeSymbols = {}
+    this._assign(d)
+  }
+
+  // Updates exchange fields in place (from /exchanges), keeping markets.
+  update(d: any) {
+    Exchange.check(d);
+    this._assign(d);
+  }
+
+  private _assign(d: any) {
+    const api = this.api
     this.id = d.id;
     this.name = d.name;
     this.code = d.code;
@@ -131,8 +148,6 @@ export default class Exchange {
     this.supportedOrderTypes = d.supportedOrderTypes;
     this.baseCurrencyDominance = d.baseCurrencyDominance;
     this.apiKeySettings = d.apiKeySettings;
-    this.markets = {};
-    this.exchangeSymbols = {}
     this.apiEndpoint = d.apiEndpoint || api.config.apiEndpoint
     this.websocketEndpoint = d.websocketEndpoint || api.config.websocketEndpoint
     this.aliasedTo = d.aliasedTo
@@ -175,6 +190,41 @@ export default class Exchange {
       this.exchangeSymbols = _.keyBy(markets, "symbol");
     }
     return marketsData
+  }
+
+  // Merges /markets/static rows: existing markets updated in place, new ones created, missing ones dropped.
+  // Returns the codes' symbols that were added and removed.
+  mergeStatic(marketsData: Array<any>): { added: string[], removed: string[] } {
+    const added: string[] = []
+    const removed: string[] = []
+    if (marketsData.length === 0) return {added, removed} // same guard as loadMarkets: never wipe on an empty list
+
+    const next: MarketMap = {}
+    for (const d of marketsData) {
+      const existing = this.markets[d.coinraySymbol]
+      try {
+        if (existing) {
+          existing.assignStatic(d)
+          next[d.coinraySymbol] = existing
+        } else {
+          Market.checkStatic(d)
+          next[d.coinraySymbol] = new Market(d, this.api, this)
+          added.push(d.coinraySymbol)
+        }
+      } catch (error) {
+        console.error(error)
+        if (existing) next[d.coinraySymbol] = existing
+      }
+    }
+    for (const [coinraySymbol, market] of Object.entries(this.markets)) {
+      if (!next[coinraySymbol]) {
+        market.removeAllListeners()
+        removed.push(coinraySymbol)
+      }
+    }
+    this.markets = next
+    this.exchangeSymbols = _.keyBy(Object.values(next), "symbol")
+    return {added, removed}
   }
 
   getBaseCurrencyDominance(baseCurrency) {

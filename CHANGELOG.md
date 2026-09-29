@@ -1,3 +1,12 @@
+# Version 2.0.18
+- CoinrayCache: only exchanges in use are refreshed every 30s via the batched GET /api/v1/tickers endpoint; others are loaded once at startup and refreshed on demand
+- CoinrayCache: new setActiveExchanges, touchExchange, ensureFresh and getActiveExchanges; marketsUpdated now carries {exchangeCodes}
+- CoinrayCache: static market data revalidated every 10 minutes via GET /api/v1/markets/static with ETag/304; markets updated in place instead of recreated
+- Falls back to the old /markets reload when the new endpoints are unavailable
+- Market.applySnapshot and Market.assignStatic; Exchange.update and Exchange.mergeStatic
+- Fix websocket ticker volumes: baseVolume/quoteVolume now hold 24h volume (BV/QV), 1s values moved to baseVolume1s/quoteVolume1s; updateTicker applies volumes
+- Fix TickerSubscriptions.unsubscribeAll clearing other listeners' pending additions
+
 # Version 2.0.11
 - Add FuturesSettings type and parsing on Market (tenor, margin, expiresAt, fundingIntervalSeconds, maxLeverage, groupName)
 - Add Market.groupName convenience getter

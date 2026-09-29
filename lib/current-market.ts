@@ -16,6 +16,7 @@ export default class CurrentMarket extends EventEmitter {
   private trades: any[];
   private tradesDelayed: boolean;
   private maxTrades: number;
+  private releaseLiveMarket?: () => void;
   private prevTickers = {
     lastPrice: new BigNumber(0),
     askPrice: new BigNumber(0),
@@ -34,6 +35,8 @@ export default class CurrentMarket extends EventEmitter {
     this.dispatchEvent('coinraySymbolWillChange', {coinraySymbol});
     this.stop();
 
+    this.releaseLiveMarket?.();
+    this.releaseLiveMarket = coinraySymbol ? this.coinrayCache.retainLiveMarket?.(coinraySymbol) : undefined;
     this.coinraySymbol = coinraySymbol;
 
     this.startOrderBook();
@@ -42,6 +45,8 @@ export default class CurrentMarket extends EventEmitter {
   }
 
   destroy() {
+    this.releaseLiveMarket?.();
+    this.releaseLiveMarket = undefined;
     this.coinraySymbol = null;
     this.removeAllListeners();
     this.stop();

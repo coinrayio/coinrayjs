@@ -14,62 +14,68 @@ import {
 } from "./util";
 import Coinray from "./coinray";
 import Exchange from "./exchange";
-import {FuturesSettings, OrderType, Ticker, TradingSession} from "./types";
+import {FuturesSettings, OrderType, Ticker, TickerSnapshot, TradingSession} from "./types";
 import EventEmitter from "./event-emitter";
 
 export default class Market extends EventEmitter {
   public getExchange: () => Exchange
   public readonly api: Coinray;
-  public readonly id: number;
-  public readonly coinraySymbol: string;
-  public readonly symbol: string;
-  public readonly symbolAlt: string;
-  public readonly quoteCurrency: string;
-  public readonly underlyingQuoteCurrency: string;
-  public readonly baseLogoUrl: string;
-  public readonly baseCurrency: string;
-  public readonly exchangeCode: string;
+  public id: number;
+  public coinraySymbol: string;
+  public symbol: string;
+  public symbolAlt: string;
+  public quoteCurrency: string;
+  public underlyingQuoteCurrency: string;
+  public baseLogoUrl: string;
+  public baseCurrency: string;
+  public exchangeCode: string;
   public volume: BigNumber;
   public quoteVolume: BigNumber;
   public btcVolume: BigNumber;
   public usdVolume: BigNumber;
-  public readonly websocket: boolean;
+  public websocket: boolean;
   public openPrice: BigNumber;
   public highPrice: BigNumber;
   public lowPrice: BigNumber;
-  public readonly precisionBase: number;
-  public readonly precisionQuote: number;
-  public readonly precisionPrice: number;
-  public readonly minBase: number;
-  public readonly maxBase: BigNumber;
-  public readonly maxBaseMarket: BigNumber;
-  public readonly minQuote: number;
-  public readonly maxQuote: BigNumber;
-  public readonly minTrade?: BigNumber;
-  public readonly maxTrade?: BigNumber;
-  public readonly makerFee: number;
-  public readonly takerFee: number;
+  public precisionBase: number;
+  public precisionQuote: number;
+  public precisionPrice: number;
+  public minBase: number;
+  public maxBase: BigNumber;
+  public maxBaseMarket: BigNumber;
+  public minQuote: number;
+  public maxQuote: BigNumber;
+  public minTrade?: BigNumber;
+  public maxTrade?: BigNumber;
+  public makerFee: number;
+  public takerFee: number;
   public change: number;
-  public readonly delistedOn: string;
-  public readonly exchangeUrl: string;
-  public readonly baseToUsd: BigNumber;
-  public readonly quoteToUsd: BigNumber;
-  public readonly status: string;
-  public readonly note: string;
-  private readonly _supportedOrderTypes: OrderType[] | null;
+  public delistedOn: string;
+  public exchangeUrl: string;
+  public baseToUsd: BigNumber;
+  public quoteToUsd: BigNumber;
+  public status: string;
+  public note: string;
+  private _supportedOrderTypes: OrderType[] | null;
   public _lastPrice?: BigNumber;
   public _askPrice: BigNumber;
   public _bidPrice: BigNumber;
-  public readonly updatedAt: string;
-  public readonly futuresSettings?: FuturesSettings;
-  public readonly symbolTv?: string;
-  public readonly tradingSessions?: TradingSession[] | null;
-  public readonly syntheticTrades: boolean;
+  public updatedAt: string;
+  public futuresSettings?: FuturesSettings;
+  public symbolTv?: string;
+  public tradingSessions?: TradingSession[] | null;
+  public syntheticTrades: boolean;
   public marketCap: BigNumber;
-  private readonly _groupName?: string | null;
+  private _groupName?: string | null;
   public getPriceOverrides: any
 
   public static Create(d: any, api: Coinray, exchange: Exchange): Market {
+    Market.checkStatic(d);
+    Market.checkDynamic(d);
+    return new Market(d, api, exchange);
+  }
+
+  static checkStatic(d: any) {
     if (d === null || d === undefined) {
       throwNull2NonNull(d);
     } else if (typeof (d) !== 'object') {
@@ -88,17 +94,9 @@ export default class Market extends EventEmitter {
     checkString(d.exchangeCode, false, "exchangeCode");
     checkString(d.status || "", false, "status");
     checkString(d.note || "", false, "note");
-    checkBigNumber(d.volume, true, "volume");
-    checkBigNumber(d.quoteVolume, true, "quoteVolume");
-    checkBigNumber(d.btcVolume, true, "btcVolume");
-    checkBigNumber(d.usdVolume, true, "usdVolume");
     checkBoolean(d.websocket, false, "websocket");
-    checkBigNumber(d.openPrice, true, "openPrice");
-    checkBigNumber(d.highPrice, true, "highPrice");
-    checkBigNumber(d.lowPrice, true, "lowPrice");
     checkNumber(d.precisionBase, false, "precisionBase");
     checkNumber(d.precisionPrice, false, "precisionPrice");
-    checkNumber(d.precisionBase, false, "precisionBase");
     checkNumber(d.minBase, true, "minBase");
     checkNumber(d.precisionQuote, false, "precisionQuote");
     checkNumber(d.minQuote, true, "minQuote");
@@ -112,21 +110,13 @@ export default class Market extends EventEmitter {
     }
     checkNumber(d.makerFee, false, "makerFee");
     checkNumber(d.takerFee, false, "takerFee");
-    checkNumber(d.change, false, "change");
     checkNull(d.delistedOn, "delistedOn");
     if (d.delistedOn === undefined) {
       d.delistedOn = null;
     }
     checkString(d.exchangeUrl, false, "exchangeUrl");
-    checkBigNumber(d.lastPrice, true, "lastPrice");
-    checkBigNumber(d.baseToUsd, false, "baseToUsd");
-    checkBigNumber(d.quoteToUsd, false, "quoteToUsd");
-    checkBigNumber(d.askPrice, true, "askPrice");
-    checkBigNumber(d.bidPrice, true, "bidPrice");
-    checkString(d.updatedAt, false, "updatedAt");
     checkString(d.symbolTv, true, "symbolTv");
     checkString(d.groupName, true, "groupName");
-    checkBigNumber(d.marketCap, true, "marketCap");
     if (d.futuresSettings !== null && d.futuresSettings !== undefined) {
       const fs = d.futuresSettings;
       checkString(fs.tenor, false, "futuresSettings.tenor");
@@ -136,13 +126,55 @@ export default class Market extends EventEmitter {
       checkBigNumber(fs.maxLeverage, true, "futuresSettings.maxLeverage");
       checkString(fs.groupName, true, "futuresSettings.groupName");
     }
-    return new Market(d, api, exchange);
+  }
+
+  private static checkDynamic(d: any) {
+    checkBigNumber(d.volume, true, "volume");
+    checkBigNumber(d.quoteVolume, true, "quoteVolume");
+    checkBigNumber(d.btcVolume, true, "btcVolume");
+    checkBigNumber(d.usdVolume, true, "usdVolume");
+    checkBigNumber(d.openPrice, true, "openPrice");
+    checkBigNumber(d.highPrice, true, "highPrice");
+    checkBigNumber(d.lowPrice, true, "lowPrice");
+    checkNumber(d.change, false, "change");
+    checkBigNumber(d.lastPrice, true, "lastPrice");
+    checkBigNumber(d.baseToUsd, false, "baseToUsd");
+    checkBigNumber(d.quoteToUsd, false, "quoteToUsd");
+    checkBigNumber(d.askPrice, true, "askPrice");
+    checkBigNumber(d.bidPrice, true, "bidPrice");
+    checkString(d.updatedAt, false, "updatedAt");
+    checkBigNumber(d.marketCap, true, "marketCap");
   }
 
   constructor(d: any, api: Coinray, exchange: Exchange) {
     super()
     this.getExchange = () => exchange
     this.api = api;
+    this._assignStatic(d);
+    this.volume = safeBigNumber(d.volume);
+    this.quoteVolume = safeBigNumber(d.quoteVolume);
+    this.btcVolume = safeBigNumber(d.btcVolume);
+    this.usdVolume = safeBigNumber(d.usdVolume);
+    this.openPrice = safeBigNumber(d.openPrice);
+    this.highPrice = safeBigNumber(d.highPrice);
+    this.lowPrice = safeBigNumber(d.lowPrice);
+    this.change = safeFloat(d.change) || 0; // static-only rows have no change
+    this._lastPrice = safeBigNumber(d.lastPrice);
+    this.baseToUsd = safeBigNumber(d.baseToUsd);
+    this.quoteToUsd = safeBigNumber(d.quoteToUsd);
+    this._askPrice = safeBigNumber(d.askPrice);
+    this._bidPrice = safeBigNumber(d.bidPrice);
+    this.updatedAt = d.updatedAt;
+    this.marketCap = safeBigNumber(d.marketCap);
+  }
+
+  // Updates static fields in place (from /markets/static), validated like Market.Create.
+  assignStatic = (d: any) => {
+    Market.checkStatic(d);
+    this._assignStatic(d);
+  }
+
+  private _assignStatic(d: any) {
     this.id = d.id;
     this.coinraySymbol = d.coinraySymbol;
     this.symbol = d.symbol;
@@ -154,19 +186,11 @@ export default class Market extends EventEmitter {
     this.exchangeCode = d.exchangeCode;
     this.status = d.status;
     this.note = d.note;
-    this.volume = safeBigNumber(d.volume);
-    this.quoteVolume = safeBigNumber(d.quoteVolume);
-    this.btcVolume = safeBigNumber(d.btcVolume);
-    this.usdVolume = safeBigNumber(d.usdVolume);
     this.websocket = d.websocket;
-    this.openPrice = safeBigNumber(d.openPrice);
-    this.highPrice = safeBigNumber(d.highPrice);
-    this.lowPrice = safeBigNumber(d.lowPrice);
     this.precisionBase = d.precisionBase;
     this.precisionPrice = d.precisionPrice;
     this.precisionQuote = d.precisionQuote;
     this.minQuote = d.minQuote;
-    this.precisionBase = d.precisionBase;
     this.minBase = d.minBase;
     this.maxBase = safeBigNumber(d.maxBase);
     this.maxBaseMarket = safeBigNumber(d.maxBaseMarket).isZero() ? this.maxBase : safeBigNumber(d.maxBaseMarket);
@@ -175,21 +199,14 @@ export default class Market extends EventEmitter {
     this.maxTrade = safeBigNumber(d.maxTrade);
     this.makerFee = safeFloat(d.makerFee);
     this.takerFee = safeFloat(d.takerFee);
-    this.change = safeFloat(d.change);
     this.delistedOn = d.delistedOn;
     this.exchangeUrl = d.exchangeUrl;
-    this._lastPrice = safeBigNumber(d.lastPrice);
-    this.baseToUsd = safeBigNumber(d.baseToUsd);
-    this.quoteToUsd = safeBigNumber(d.quoteToUsd);
-    this._askPrice = safeBigNumber(d.askPrice);
-    this._bidPrice = safeBigNumber(d.bidPrice);
     this._supportedOrderTypes = d.supportedOrderTypes;
-    this.updatedAt = d.updatedAt;
     this.symbolTv = d.symbolTv;
     this._groupName = d.groupName;
     this.tradingSessions = d.tradingSessions ?? null;
     this.syntheticTrades = d.syntheticTrades ?? false;
-    this.marketCap = safeBigNumber(d.marketCap);
+    this.futuresSettings = undefined;
     if (d.futuresSettings !== null && d.futuresSettings !== undefined) {
       const fs = d.futuresSettings;
       this.futuresSettings = {
@@ -276,9 +293,35 @@ export default class Market extends EventEmitter {
     this.openPrice = ticker.openPrice24h;
     this.highPrice = ticker.highPrice24h;
     this.lowPrice = ticker.lowPrice24h;
+    this.volume = ticker.baseVolume;
+    this.quoteVolume = ticker.quoteVolume;
+    this.btcVolume = ticker.btcVolume;
+    this.usdVolume = ticker.usdVolume;
 
     this.updateBidAsk(ticker.bidPrice, ticker.askPrice)
     this.updateLastPrice(ticker.lastPrice);
+    this.dispatchEvent("ticker")
+  }
+
+  // REST 24h snapshot. `live` = the websocket feeds this market (ticker subscription or current market),
+  // which is fresher, so prices and 24h OHL are left alone.
+  applySnapshot = (t: TickerSnapshot, live = false) => {
+    if (!live) {
+      this._lastPrice = t.lastPrice;
+      this._bidPrice = t.bidPrice;
+      this._askPrice = t.askPrice;
+      this.openPrice = t.openPrice24h;
+      this.highPrice = t.highPrice24h;
+      this.lowPrice = t.lowPrice24h;
+      this.change = this.openPrice.isZero() ? 0 : this._lastPrice.minus(this.openPrice).dividedBy(this.openPrice).multipliedBy(100).toNumber();
+    }
+    this.volume = t.baseVolume;
+    this.quoteVolume = t.quoteVolume;
+    this.btcVolume = t.btcVolume;
+    this.usdVolume = t.usdVolume;
+    this.baseToUsd = t.baseToUsd;
+    this.quoteToUsd = t.quoteToUsd;
+    this.marketCap = t.marketCap;
     this.dispatchEvent("ticker")
   }
 
