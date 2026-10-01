@@ -1,3 +1,8 @@
+# Version 2.0.19
+- Formula (synthetic) markets: a coinraySymbol like "BINA_USDT_XYZ / BINA_USDT_BTC" (+ - * / parentheses, numbers) is accepted by CoinrayCache fetchCandles, fetchFirstCandleTime, subscribeCandles and unsubscribeCandles; legs are combined bar by bar, also across exchanges
+- CoinrayCache.formulaSymbolInfo(formula) returns {name, legs, pricePrecision} for the chart
+- Formula candles have zero volume; binary minus needs spaces ("A - B")
+
 # Version 2.0.18
 - CoinrayCache: only exchanges in use are refreshed every 30s via the batched GET /api/v1/tickers endpoint; others are loaded once at startup and refreshed on demand
 - CoinrayCache: new setActiveExchanges, touchExchange, ensureFresh and getActiveExchanges; marketsUpdated now carries {exchangeCodes}

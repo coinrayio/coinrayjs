@@ -11,6 +11,7 @@ export * from "./orders";
 export * from "./types";
 export * as types from "./types";
 export * from "./orders/limit-ladder"
+export * from "./formula"
 
 // bignumber.js 10 dropped the DEBUG flag and made invalid input -- undefined,
 // null, "", "abc" -- throw instead of yielding NaN, for the coercing methods

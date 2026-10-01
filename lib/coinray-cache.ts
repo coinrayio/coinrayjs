@@ -5,6 +5,7 @@ import {CacheParams, Candle, CandleParam, CandlesParam, MarketMap, MarketParam, 
 import EventEmitter from "./event-emitter"
 import TickerSubscriptions from "./ticker-subscriptions";
 import _ from "lodash";
+import {formulaCandles, formulaLegs, formulaSymbolInfo, FormulaNode, isFormula, latestFormulaCandle, parseFormula} from "./formula";
 
 interface ExchangeMap {
   [key: string]: Exchange;
@@ -37,6 +38,8 @@ export default class CoinrayCache extends EventEmitter {
   private rawCache: { exchanges: object[], markets: { [code: string]: any[] } } = {exchanges: [], markets: {}}
 
   private destroyed = false
+  // "formula-resolution" -> caller callback -> [leg, leg callback][]
+  private formulaSubs = new Map<string, Map<(payload: any) => void, [string, (payload: any) => void][]>>()
   private loopsStarted = false
   private tickersTimer: any
   private staticTimer: any
@@ -519,11 +522,21 @@ export default class CoinrayCache extends EventEmitter {
   };
 
   async fetchCandles({coinraySymbol, resolution, start, end, useWebSocket}: CandlesParam): Promise<Candle[]> {
+    if (isFormula(coinraySymbol)) {
+      const {node, legs} = this.parseFormulaSymbol(coinraySymbol)
+      const results = await Promise.all(legs.map((leg) => this.fetchCandles({coinraySymbol: leg, resolution, start, end, useWebSocket})))
+      return formulaCandles(node, _.zipObject(legs, results))
+    }
     const api = this.apiForSymbol(coinraySymbol)
     return api.fetchCandles({coinraySymbol, resolution, start, end, useWebSocket})
   }
 
   async fetchFirstCandleTime({coinraySymbol, resolution}: CandlesParam): Promise<Date> {
+    if (isFormula(coinraySymbol)) {
+      const {legs} = this.parseFormulaSymbol(coinraySymbol)
+      const times = await Promise.all(legs.map((leg) => this.fetchFirstCandleTime({coinraySymbol: leg, resolution})))
+      return _.maxBy(times, (t) => new Date(t).getTime())
+    }
     const api = this.apiForSymbol(coinraySymbol)
     return api.fetchFirstCandleTime({coinraySymbol, resolution})
   }
@@ -615,16 +628,40 @@ export default class CoinrayCache extends EventEmitter {
                            resolution,
                            lastCandle
                          }: CandleParam, callback: (payload: any) => void): Promise<(payload: any) => void> {
+    if (isFormula(coinraySymbol)) {
+      const {node, legs} = this.parseFormulaSymbol(coinraySymbol)
+      const latest: Record<string, Candle> = {}
+      const legCallbacks = legs.map((leg): [string, (payload: any) => void] => [leg, ({candle}) => {
+        latest[leg] = candle
+        const combined = latestFormulaCandle(node, latest)
+        if (combined) callback({coinraySymbol, resolution, candle: combined, previousCandles: []})
+      }])
+      const key = `${coinraySymbol}-${resolution}`
+      if (!this.formulaSubs.has(key)) this.formulaSubs.set(key, new Map())
+      this.formulaSubs.get(key).set(callback, legCallbacks)
+      await Promise.all(legCallbacks.map(([leg, cb]) => this.subscribeCandles({coinraySymbol: leg, resolution}, cb)))
+      return callback
+    }
     const api = this.apiForSymbol(coinraySymbol)
     return api.subscribeCandles({coinraySymbol, resolution, lastCandle}, callback)
   }
 
   async unsubscribeCandles({coinraySymbol, resolution}: CandleParam, callback?: (payload: any) => void) {
+    if (isFormula(coinraySymbol)) {
+      const subs = this.formulaSubs.get(`${coinraySymbol}-${resolution}`)
+      if (!subs) return
+      for (const target of callback ? [callback] : [...subs.keys()]) {
+        for (const [leg, cb] of subs.get(target) ?? []) await this.unsubscribeCandles({coinraySymbol: leg, resolution}, cb)
+        subs.delete(target)
+      }
+      return
+    }
     const api = this.apiForSymbol(coinraySymbol)
     await api.unsubscribeCandles({coinraySymbol, resolution}, callback)
   }
 
   async subscribeOrderBook({coinraySymbol}: MarketParam, callback: (payload: any) => void) {
+    if (isFormula(coinraySymbol)) throw new Error("Not supported for formula symbols")
     const api = this.apiForSymbol(coinraySymbol)
     await api.subscribeOrderBook({coinraySymbol}, callback)
   }
@@ -635,6 +672,7 @@ export default class CoinrayCache extends EventEmitter {
   }
 
   async subscribeTrades({coinraySymbol}: MarketParam, callback: (payload: any) => void) {
+    if (isFormula(coinraySymbol)) throw new Error("Not supported for formula symbols")
     const api = this.apiForSymbol(coinraySymbol)
     await api.subscribeTrades({coinraySymbol}, callback)
   }
@@ -642,6 +680,18 @@ export default class CoinrayCache extends EventEmitter {
   async unsubscribeTrades({coinraySymbol}: MarketParam, callback?: (payload: any) => void) {
     const api = this.apiForSymbol(coinraySymbol)
     await api.unsubscribeTrades({coinraySymbol}, callback)
+  }
+
+  formulaSymbolInfo(formula: string) {
+    return formulaSymbolInfo(formula, this.getMarket)
+  }
+
+  private parseFormulaSymbol(formula: string): { node: FormulaNode, legs: string[] } {
+    const node = parseFormula(formula)
+    const legs = formulaLegs(node)
+    const unknown = legs.find((leg) => !this.apiForSymbol(leg))
+    if (unknown) throw new Error(`Unknown exchange for ${unknown}`)
+    return {node, legs}
   }
 
   apiForSymbol(coinraySymbol: string): Coinray | undefined {
