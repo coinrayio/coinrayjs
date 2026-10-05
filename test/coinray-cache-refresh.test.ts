@@ -1,3 +1,4 @@
+import BigNumber from "bignumber.js"
 import {describe, test, expect, beforeEach, afterEach, vi} from "vitest"
 import CoinrayCache from "../lib/coinray-cache"
 import Coinray from "../lib/coinray"
@@ -26,8 +27,8 @@ const fullRow = (coinraySymbol: string, extra = {}) => ({
   quoteToUsd: "1", askPrice: "100", bidPrice: "100", updatedAt: "2026-09-29T00:00:00Z", marketCap: "0", ...extra,
 })
 
-const compactTicker = (s: string, price: number) => ({
-  s, c: `${price}`, a: `${price + 1}`, b: `${price - 1}`, O: "100", H: "300", L: "50",
+const compactTicker = (s: string, price: number, open: number) => ({
+  s, c: `${price}`, a: `${price + 1}`, b: `${price - 1}`, O: `${open}`, H: "300", L: "50",
   BV: "10", QV: "20", B: "30", U: "40", bu: "2", qu: "3", mc: "5000",
 })
 
@@ -38,6 +39,7 @@ type Server = {
   exchanges: string[]
   markets: { [code: string]: any[] }
   price: number
+  open: number
   etags: { [code: string]: string }
   tickers404: boolean
   tickersNetworkError?: boolean
@@ -50,6 +52,7 @@ async function setup(codes = ["BINA", "KUCN", "OKEX"], {apiCache = undefined} = 
     exchanges: codes,
     markets: Object.fromEntries(codes.map((code) => [code, [fullRow(`${code}_USDT_BTC`), fullRow(`${code}_USDT_ETH`)]])),
     price: 200,
+    open: 100,
     etags: Object.fromEntries(codes.map((code) => [code, `"v1-${code}"`])),
     tickers404: false,
     static404: false,
@@ -72,7 +75,7 @@ async function setup(codes = ["BINA", "KUCN", "OKEX"], {apiCache = undefined} = 
         if (server.tickers404) throw notFound()
         if (server.tickersNetworkError) throw networkError()
         const tickers = Object.fromEntries(params.exchanges.split(",").filter((c) => server.markets[c])
-          .map((c) => [c, server.markets[c].map((m) => compactTicker(m.coinraySymbol, server.price))]))
+          .map((c) => [c, server.markets[c].map((m) => compactTicker(m.coinraySymbol, server.price, server.open))]))
         return {result: {tickers}, _headers: {}}
       }
       case "markets/static": {
@@ -187,6 +190,63 @@ describe("tickers loop", () => {
     releaseLive()
     await vi.advanceTimersByTimeAsync(30_000)
     expect(kucn.lastPrice.toString()).toBe("200")
+    cache.destroy()
+  })
+
+  test("unchanged ticker fields reuse their BigNumbers; change follows price moves", async () => {
+    const {cache, server} = await setup()
+    await cache.initialize()
+    const btc = cache.getMarket("BINA_USDT_BTC")
+    cache.touchExchange("BINA")
+    await vi.advanceTimersByTimeAsync(30_000)
+    const {lastPrice, volume} = btc
+    expect(btc.change).toBe(100)
+
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(btc.lastPrice).toBe(lastPrice)
+    expect(btc.volume).toBe(volume)
+    expect(btc.change).toBe(100)
+
+    server.price = 150
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(btc.lastPrice.toString()).toBe("150")
+    expect(btc.volume).toBe(volume)
+    expect(btc.change).toBe(50)
+    cache.destroy()
+  })
+
+  test("change follows a 24h open move while the last price is unchanged", async () => {
+    const {cache, server} = await setup()
+    await cache.initialize()
+    const btc = cache.getMarket("BINA_USDT_BTC")
+    cache.touchExchange("BINA")
+    await vi.advanceTimersByTimeAsync(30_000)
+    const {lastPrice} = btc
+    expect(btc.change).toBe(100)
+
+    server.open = 50
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(btc.lastPrice).toBe(lastPrice)
+    expect(btc.change).toBe(300)
+    cache.destroy()
+  })
+
+  test("change is recomputed when a market returns from websocket to REST snapshots", async () => {
+    const {cache} = await setup()
+    await cache.initialize()
+    const btc = cache.getMarket("BINA_USDT_BTC")
+    cache.touchExchange("BINA")
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(btc.change).toBe(100)
+
+    const releaseLive = cache.retainLiveMarket("BINA_USDT_BTC")
+    btc.updateLastPrice(new BigNumber(150))
+    expect(btc.change).toBe(50)
+
+    releaseLive()
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(btc.lastPrice.toString()).toBe("200")
+    expect(btc.change).toBe(100)
     cache.destroy()
   })
 

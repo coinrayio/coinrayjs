@@ -278,8 +278,13 @@ export default class Market extends EventEmitter {
 
   updateLastPrice = (lastPrice: BigNumber) => {
     this._lastPrice = lastPrice;
-    this.change = this.openPrice.isZero() ? 0 : this.lastPrice.minus(this.openPrice).dividedBy(this.openPrice).multipliedBy(100).toNumber();
+    this.recomputeChange()
     this.dispatchEvent("price")
+  }
+
+  // From lastPrice (with overrides), so websocket and snapshot updates agree.
+  private recomputeChange() {
+    this.change = this.openPrice.isZero() ? 0 : this.lastPrice.minus(this.openPrice).dividedBy(this.openPrice).multipliedBy(100).toNumber();
   }
 
   updateBidAsk = (bidPrice: BigNumber, askPrice: BigNumber) => {
@@ -307,13 +312,15 @@ export default class Market extends EventEmitter {
   // which is fresher, so prices and 24h OHL are left alone.
   applySnapshot = (t: TickerSnapshot, live = false) => {
     if (!live) {
+      // Snapshots reuse unchanged BigNumbers, so identity means the value didn't change.
+      const changeStale = t.lastPrice !== this._lastPrice || t.openPrice24h !== this.openPrice
       this._lastPrice = t.lastPrice;
       this._bidPrice = t.bidPrice;
       this._askPrice = t.askPrice;
       this.openPrice = t.openPrice24h;
       this.highPrice = t.highPrice24h;
       this.lowPrice = t.lowPrice24h;
-      this.change = this.openPrice.isZero() ? 0 : this._lastPrice.minus(this.openPrice).dividedBy(this.openPrice).multipliedBy(100).toNumber();
+      if (changeStale) this.recomputeChange()
     }
     this.volume = t.baseVolume;
     this.quoteVolume = t.quoteVolume;

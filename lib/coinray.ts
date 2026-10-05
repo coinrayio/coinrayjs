@@ -1,4 +1,5 @@
 import axios, {AxiosRequestConfig, Method} from "axios";
+import BigNumber from "bignumber.js";
 import {Channel, Socket} from "phoenix";
 import {
   candleTime,
@@ -131,6 +132,7 @@ export default class Coinray {
     this._orderbookListeners = {};
     this._tickerListeners = new Map();
     this._tickerSymbols = new Map();
+    this.tickerSnapshots = new Map();
     this._channels = {};
 
     if (this._timeOffsetTimeout) {
@@ -832,8 +834,17 @@ export default class Coinray {
       version: "v1",
       params: {exchanges: [...exchangeCodes].sort().join(",")}
     })
-    return _.mapValues(tickers || {}, (list) => list.map(Coinray._parseTickerSnapshot))
+    return _.mapValues(tickers || {}, (list) => list.map(this.parseTickerSnapshotReusing))
   };
+
+  // Most ticker fields repeat between 30 s refreshes; reusing their (immutable) BigNumbers skips most parsing.
+  private tickerSnapshots = new Map<string, { raw: any, parsed: TickerSnapshot }>()
+
+  private parseTickerSnapshotReusing = (t): TickerSnapshot => {
+    const parsed = Coinray._parseTickerSnapshot(t, this.tickerSnapshots.get(t.s))
+    this.tickerSnapshots.set(t.s, {raw: t, parsed})
+    return parsed
+  }
 
   // 304 (etag matched) resolves with markets: null.
   fetchStaticMarkets = async (exchangeCode: string, etag?: string): Promise<{ markets: Array<object> | null, etag?: string }> => {
@@ -1313,22 +1324,24 @@ export default class Coinray {
     }
   }
 
-  private static _parseTickerSnapshot(t): TickerSnapshot {
+  private static _parseTickerSnapshot(t, previous?: { raw: any, parsed: TickerSnapshot }): TickerSnapshot {
+    const field = (key: string, name: keyof TickerSnapshot): BigNumber =>
+      previous && previous.raw[key] === t[key] ? previous.parsed[name] as BigNumber : safeBigNumber(t[key])
     return {
       coinraySymbol: t.s,
-      lastPrice: safeBigNumber(t.c),
-      askPrice: safeBigNumber(t.a),
-      bidPrice: safeBigNumber(t.b),
-      openPrice24h: safeBigNumber(t.O),
-      highPrice24h: safeBigNumber(t.H),
-      lowPrice24h: safeBigNumber(t.L),
-      baseVolume: safeBigNumber(t.BV),
-      quoteVolume: safeBigNumber(t.QV),
-      btcVolume: safeBigNumber(t.B),
-      usdVolume: safeBigNumber(t.U),
-      baseToUsd: safeBigNumber(t.bu),
-      quoteToUsd: safeBigNumber(t.qu),
-      marketCap: safeBigNumber(t.mc),
+      lastPrice: field("c", "lastPrice"),
+      askPrice: field("a", "askPrice"),
+      bidPrice: field("b", "bidPrice"),
+      openPrice24h: field("O", "openPrice24h"),
+      highPrice24h: field("H", "highPrice24h"),
+      lowPrice24h: field("L", "lowPrice24h"),
+      baseVolume: field("BV", "baseVolume"),
+      quoteVolume: field("QV", "quoteVolume"),
+      btcVolume: field("B", "btcVolume"),
+      usdVolume: field("U", "usdVolume"),
+      baseToUsd: field("bu", "baseToUsd"),
+      quoteToUsd: field("qu", "quoteToUsd"),
+      marketCap: field("mc", "marketCap"),
     }
   }
 
