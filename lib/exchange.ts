@@ -47,6 +47,8 @@ export default class Exchange {
   public tradingEnabledFrom: string;
   public isFutures: boolean;
   public isDex: boolean;
+  // Calculated exchange (CRAY, CRAYF): chart, alert and screener data only, never tradable
+  public virtual: boolean;
   public logo: string;
   public btcVolume: BigNumber;
   public usdVolume: BigNumber;
@@ -85,6 +87,7 @@ export default class Exchange {
     checkString(d.tradingEnabledFrom, false, "tradingEnabledFrom");
     checkBoolean(d.isFutures, true, "isFutures");
     checkBoolean(d.isDex, true, "isDex");
+    checkBoolean(d.virtual, true, "virtual");
     checkString(d.logo, false, "logo");
     checkString(d.btcVolume, false, "btcVolume");
     checkString(d.usdVolume, false, "usdVolume");
@@ -135,6 +138,7 @@ export default class Exchange {
     this.websocket = d.websocket;
     this.isFutures = !!d.isFutures;
     this.isDex = !!d.isDex;
+    this.virtual = !!d.virtual;
     this.active = d.active;
     this.tradingEnabled = d.tradingEnabled;
     this.tradingEnabledFrom = d.tradingEnabledFrom;
@@ -162,6 +166,7 @@ export default class Exchange {
       websocket: this.websocket,
       isFutures: this.isFutures,
       isDex: this.isDex,
+      virtual: this.virtual,
       logo: this.logo,
       btcVolume: this.btcVolume,
       usdVolume: this.usdVolume,

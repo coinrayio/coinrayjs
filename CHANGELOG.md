@@ -1,3 +1,6 @@
+# Unreleased
+- Exchange.virtual: true for calculated exchanges (CRAY, CRAYF) that are never tradable, read from the exchange JSON `virtual` field (default false)
+
 # Version 2.0.20
 - CoinrayCache: ticker refreshes reuse the BigNumbers of fields that did not change, and Market.applySnapshot only recomputes change when the last or 24h open price changed
 
