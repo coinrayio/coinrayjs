@@ -1,11 +1,13 @@
 import Coinray from "./coinray";
 import Exchange from "./exchange";
+import Market from "./market";
 import {filterMarkets} from "./util";
 import {CacheParams, Candle, CandleParam, CandlesParam, MarketMap, MarketParam, MarketQuery} from "./types";
 import EventEmitter from "./event-emitter"
 import TickerSubscriptions from "./ticker-subscriptions";
 import _ from "lodash";
 import {formulaCandles, formulaLegs, formulaSymbolInfo, FormulaNode, isFormula, latestFormulaCandle, parseFormula} from "./formula";
+import FormulaMarket from "./formula-market";
 
 interface ExchangeMap {
   [key: string]: Exchange;
@@ -19,8 +21,18 @@ const ACTIVATION_DEBOUNCE_MS = 250
 const TICKERS_CHUNK_SIZE = 10
 
 // "BINA_USDT_BTC" and "BINA" both map to "BINA"
+// A formula stands for its legs; one that doesn't parse stands for nothing.
+const expandFormulas = (symbols: string[]): string[] => _.uniq(symbols.flatMap((s) => {
+  if (!isFormula(s)) return [s]
+  try {
+    return formulaLegs(parseFormula(s))
+  } catch (e) {
+    return []
+  }
+}))
+
 const toExchangeCodes = (symbolsOrCodes: string | string[]): string[] =>
-  _.uniq((Array.isArray(symbolsOrCodes) ? symbolsOrCodes : [symbolsOrCodes]).map((s) => `${s}`.split("_")[0]))
+  _.uniq(expandFormulas(Array.isArray(symbolsOrCodes) ? symbolsOrCodes : [symbolsOrCodes]).map((s) => `${s}`.split("_")[0]))
 
 export default class CoinrayCache extends EventEmitter {
   private rootApi: Coinray;
@@ -40,6 +52,9 @@ export default class CoinrayCache extends EventEmitter {
   private destroyed = false
   // "formula-resolution" -> caller callback -> [leg, leg callback][]
   private formulaSubs = new Map<string, Map<(payload: any) => void, [string, (payload: any) => void][]>>()
+  private formulaMarkets = new Map<string, FormulaMarket>()
+  // listenerId -> ticker symbols as requested, formulas unexpanded
+  private requestedTickers = new Map<string, Set<string>>()
   private loopsStarted = false
   private tickersTimer: any
   private staticTimer: any
@@ -524,6 +539,15 @@ export default class CoinrayCache extends EventEmitter {
   async fetchCandles({coinraySymbol, resolution, start, end, useWebSocket}: CandlesParam): Promise<Candle[]> {
     if (isFormula(coinraySymbol)) {
       const {node, legs} = this.parseFormulaSymbol(coinraySymbol)
+      // seconds candles come from the websocket, per leg
+      const api = resolution.endsWith("S") ? undefined : this.formulaApi(legs)
+      if (api) {
+        try {
+          return await api.fetchCandles({coinraySymbol, resolution, start, end, useWebSocket})
+        } catch (e) {
+          // an older proxy without formula support: combine the legs here
+        }
+      }
       const results = await Promise.all(legs.map((leg) => this.fetchCandles({coinraySymbol: leg, resolution, start, end, useWebSocket})))
       return formulaCandles(node, _.zipObject(legs, results))
     }
@@ -534,6 +558,14 @@ export default class CoinrayCache extends EventEmitter {
   async fetchFirstCandleTime({coinraySymbol, resolution}: CandlesParam): Promise<Date> {
     if (isFormula(coinraySymbol)) {
       const {legs} = this.parseFormulaSymbol(coinraySymbol)
+      const api = this.formulaApi(legs)
+      if (api) {
+        try {
+          return await api.fetchFirstCandleTime({coinraySymbol, resolution})
+        } catch (e) {
+          // an older proxy: ask each leg
+        }
+      }
       const times = await Promise.all(legs.map((leg) => this.fetchFirstCandleTime({coinraySymbol: leg, resolution})))
       return _.maxBy(times, (t) => new Date(t).getTime())
     }
@@ -541,9 +573,26 @@ export default class CoinrayCache extends EventEmitter {
     return api.fetchFirstCandleTime({coinraySymbol, resolution})
   }
 
+  // Formulas subscribe their legs. Each listener's symbols are kept as requested (formulas unexpanded),
+  // so dropping a formula or a plain symbol only drops legs no other requested symbol still needs.
   subscribeTickers(listenerId: string, coinraySymbols: string[], resetExisting = false) {
-    this.tickerSubscriptions.subscribe(listenerId, coinraySymbols, resetExisting)
+    this.updateRequestedTickers(listenerId, (requested) => {
+      if (resetExisting) requested.clear()
+      for (const symbol of coinraySymbols) requested.add(symbol)
+    })
+    this.tickerSubscriptions.subscribe(listenerId, expandFormulas(coinraySymbols))
     this.scheduleTickerRefresh()
+  }
+
+  // Unsubscribes the legs the listener no longer needs after `update` changed its requested symbols.
+  private updateRequestedTickers(listenerId: string, update: (requested: Set<string>) => void) {
+    const requested = this.requestedTickers.get(listenerId) ?? new Set<string>()
+    const before = expandFormulas([...requested])
+    update(requested)
+    if (requested.size) this.requestedTickers.set(listenerId, requested)
+    else this.requestedTickers.delete(listenerId)
+    const unneeded = _.difference(before, expandFormulas([...requested]))
+    if (unneeded.length) this.tickerSubscriptions.unsubscribe(listenerId, unneeded)
   }
 
   scheduleTickerRefresh() {
@@ -558,12 +607,15 @@ export default class CoinrayCache extends EventEmitter {
   }
 
   unsubscribeAllTickers(listenerId: string) {
+    this.requestedTickers.delete(listenerId)
     this.tickerSubscriptions.unsubscribeAll(listenerId)
     this.scheduleTickerRefresh()
   }
 
   unsubscribeTickers(listenerId: string, coinraySymbols: string[]) {
-    this.tickerSubscriptions.unsubscribe(listenerId, coinraySymbols)
+    this.updateRequestedTickers(listenerId, (requested) => {
+      for (const symbol of coinraySymbols) requested.delete(symbol)
+    })
     this.scheduleTickerRefresh()
   }
 
@@ -682,6 +734,25 @@ export default class CoinrayCache extends EventEmitter {
     await api.unsubscribeTrades({coinraySymbol}, callback)
   }
 
+  // undefined only when the formula doesn't parse; unknown legs show up in missingLegs.
+  getFormulaMarket(formula: string): FormulaMarket | undefined {
+    if (!isFormula(formula)) return
+    let market = this.formulaMarkets.get(formula)
+    if (!market) {
+      try {
+        market = new FormulaMarket(formula, this.getMarket)
+      } catch (e) {
+        return
+      }
+      this.formulaMarkets.set(formula, market)
+    }
+    return market
+  }
+
+  getMarketOrFormula(coinraySymbol: string): Market | FormulaMarket | undefined {
+    return isFormula(coinraySymbol) ? this.getFormulaMarket(coinraySymbol) : this.getMarket(coinraySymbol)
+  }
+
   formulaSymbolInfo(formula: string) {
     return formulaSymbolInfo(formula, this.getMarket)
   }
@@ -692,6 +763,12 @@ export default class CoinrayCache extends EventEmitter {
     const unknown = legs.find((leg) => !this.apiForSymbol(leg))
     if (unknown) throw new Error(`Unknown exchange for ${unknown}`)
     return {node, legs}
+  }
+
+  // The proxy evaluates a formula in one request (one response instead of one per leg) when all legs share an API
+  private formulaApi(legs: string[]): Coinray | undefined {
+    const apis = new Set(legs.map((leg) => this.apiForSymbol(leg)))
+    return apis.size === 1 ? [...apis][0] : undefined
   }
 
   apiForSymbol(coinraySymbol: string): Coinray | undefined {

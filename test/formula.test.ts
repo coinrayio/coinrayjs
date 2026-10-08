@@ -1,5 +1,6 @@
-import {describe, test, expect} from "vitest"
+import {describe, test, expect, vi} from "vitest"
 import CoinrayCache from "../lib/coinray-cache"
+import Coinray from "../lib/coinray"
 import {alignCandles, combineCandles, evalFormula, formulaCandles, formulaLegs, formulaPrecision, formulaSymbolInfo, isFormula, parseFormula} from "../lib/formula"
 import {Candle} from "../lib/types"
 
@@ -94,10 +95,18 @@ describe("candles", () => {
 
 describe("CoinrayCache formula symbols", () => {
   const listeners: Record<string, ((p: any) => void)[]> = {}
+  // the proxy evaluates formulas itself unless proxyRejects is set
+  let proxyRejects = false
   const fakeApi = {
-    fetchCandles: async ({coinraySymbol}) => coinraySymbol === A
-      ? [c(0, 10, 10, 10, 10), c(60, 20, 20, 20, 20)]
-      : [c(0, 5, 5, 5, 5), c(60, 5, 5, 5, 5)],
+    fetchCandles: async ({coinraySymbol}) => {
+      if (isFormula(coinraySymbol)) {
+        if (proxyRejects) throw new Error("Invalid exchange code")
+        return [c(0, 7, 7, 7, 7)]
+      }
+      return coinraySymbol === A
+        ? [c(0, 10, 10, 10, 10), c(60, 20, 20, 20, 20)]
+        : [c(0, 5, 5, 5, 5), c(60, 5, 5, 5, 5)]
+    },
     subscribeCandles: async ({coinraySymbol}, cb) => {
       (listeners[coinraySymbol] ??= []).push(cb)
       return cb
@@ -110,8 +119,23 @@ describe("CoinrayCache formula symbols", () => {
   ;(cache as any).apis = new Map([["BINA", fakeApi]])
   const formula = `${A} / ${B}`
 
-  test("fetchCandles", async () => {
+  test("fetchCandles asks the proxy for the formula in one request", async () => {
     const bars = await cache.fetchCandles({coinraySymbol: formula, resolution: "1", start: 0, end: 60})
+    expect(bars.map((b) => b.close)).toEqual([7])
+  })
+
+  test("fetchCandles combines the legs when the proxy rejects the formula", async () => {
+    proxyRejects = true
+    try {
+      const bars = await cache.fetchCandles({coinraySymbol: formula, resolution: "1", start: 0, end: 60})
+      expect(bars.map((b) => b.close)).toEqual([2, 4])
+    } finally {
+      proxyRejects = false
+    }
+  })
+
+  test("fetchCandles combines the legs for seconds resolutions", async () => {
+    const bars = await cache.fetchCandles({coinraySymbol: formula, resolution: "1S", start: 0, end: 60})
     expect(bars.map((b) => b.close)).toEqual([2, 4])
   })
 
@@ -133,5 +157,28 @@ describe("CoinrayCache formula symbols", () => {
     await cache.unsubscribeCandles({coinraySymbol: formula, resolution: "1"}, cb)
     expect(listeners[A]).toHaveLength(0)
     expect(listeners[B]).toHaveLength(0)
+  })
+})
+
+describe("Coinray formula requests", () => {
+  test("formula symbols are url encoded, start time uses v2", async () => {
+    const api = new Coinray("", {apiEndpoint: "http://localhost"} as any)
+    const get = vi.spyOn(api, "get").mockResolvedValue({result: {startTime: "2020-01-01T00:00:00Z", candles: []}, _headers: {}})
+    await api.fetchFirstCandleTime({coinraySymbol: `${A} + ${B}`, resolution: "1"})
+    expect(get).toHaveBeenCalledWith("candles/start-time", {version: "v2", params: {symbol: "BINA_USDT_XYZ%20%2B%20BINA_USDT_BTC", resolution: "1"}})
+    await api.fetchFirstCandleTime({coinraySymbol: A, resolution: "1"})
+    expect(get).toHaveBeenLastCalledWith("candles/start-time", {version: "v1", params: {symbol: A, resolution: "1"}})
+  })
+
+  test("a formula's open candles skip the websocket snapshot", async () => {
+    const api = new Coinray("", {apiEndpoint: "http://localhost"} as any)
+    const now = Math.floor(Date.now() / 1000)
+    const get = vi.spyOn(api, "get").mockImplementation(async (endpoint) => ({
+      result: {candles: endpoint === "candles/open" ? [[now - 60, "2", "2", "2", "2", "0", "0"]] : []}, _headers: {},
+    }))
+    const ws = vi.spyOn(api, "getWebsocketCandles")
+    await api.fetchCandles({coinraySymbol: `${A} / ${B}`, resolution: "1", start: now - 3600, end: now})
+    expect(ws).not.toHaveBeenCalled()
+    expect(get.mock.calls[0]).toEqual(["candles/open", {version: "v2", params: {symbol: "BINA_USDT_XYZ%20%2F%20BINA_USDT_BTC", resolution: "1"}}])
   })
 })

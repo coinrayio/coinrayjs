@@ -37,6 +37,10 @@ import {
 import Exchange from "./exchange";
 import _, {chunk} from "lodash";
 import I18n from "./i18n";
+import {isFormula} from "./formula";
+
+// Formulas ("BINA_USDT_ETH / BINA_USDT_BTC") contain spaces, "+" and "/", which a raw query string would mangle
+const candleSymbolParam = (coinraySymbol: string) => isFormula(coinraySymbol) ? encodeURIComponent(coinraySymbol) : coinraySymbol
 
 // load the value from the package.json file
 // @ts-ignore
@@ -642,10 +646,11 @@ export default class Coinray {
   };
 
   fetchFirstCandleTime = async ({coinraySymbol, resolution}): Promise<Date> => {
+    // only the v2 endpoint takes formulas
     let {result: {startTime}} = await this.get("candles/start-time", {
-      version: "v1",
+      version: isFormula(coinraySymbol) ? "v2" : "v1",
       params: {
-        symbol: coinraySymbol, resolution
+        symbol: candleSymbolParam(coinraySymbol), resolution
       }
     })
     return startTime
@@ -669,7 +674,7 @@ export default class Coinray {
     let minTime = end + 1
     if (toBucketEnd(end, resolution) >= currentTime) {
       let openCandles = await this.getOpenCandles(useWebSocket, {
-        version: "v2", params: {symbol: coinraySymbol, resolution: resolution,}
+        version: "v2", params: {symbol: candleSymbolParam(coinraySymbol), resolution: resolution,}
       })
 
       if (openCandles.length > 0) {
@@ -689,7 +694,7 @@ export default class Coinray {
         let getParams = {
           version: "v2",
           params: {
-            symbol: coinraySymbol,
+            symbol: candleSymbolParam(coinraySymbol),
             resolution: resolution,
             ...timeParams
           }
@@ -752,7 +757,9 @@ export default class Coinray {
       return cached
     }
 
-    const snapshot = await this.getWebsocketCandles(getParams.params.symbol, getParams.params.resolution)
+    const {symbol, resolution} = getParams.params
+    // a formula has no websocket stream of its own, CoinrayCache feeds its live bar from the legs
+    const snapshot = isFormula(decodeURIComponent(symbol)) ? [] : await this.getWebsocketCandles(symbol, resolution)
     const indexedSnapshot = _.keyBy(snapshot, ({time}) => time.getTime())
 
     let {result} = await this.get("candles/open", getParams) // this goes directly to the backend
@@ -783,7 +790,7 @@ export default class Coinray {
       if (getParams.params.year < 2018) {
         return new Promise((resolve) => resolve([]))
       }
-      let {result} = await this.get("candles/history", getParams) // this goes to the cf worker / cache
+      let {result} = await this.get("candles/history", getParams)
       if (result.candles) {
         let candles = result.candles.map(Coinray._parseCandle)
         this._candleCache.set(cacheKey, candles)

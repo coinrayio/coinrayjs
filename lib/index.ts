@@ -3,6 +3,7 @@ import Coinray from "./coinray";
 
 import CoinrayCache from "./coinray-cache";
 import CurrentMarket from "./current-market";
+import FormulaMarket from "./formula-market";
 import locales from "./i18n/locales"
 
 export * from "./util";
@@ -21,5 +22,5 @@ export * from "./formula"
 // its own copy would never reach this one -- it has to be set here.
 BigNumber.set({STRICT: false})
 
-export {CoinrayCache, CurrentMarket, locales}
+export {CoinrayCache, CurrentMarket, FormulaMarket, locales}
 export default Coinray
