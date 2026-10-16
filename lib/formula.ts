@@ -14,10 +14,14 @@ type Token = { kind: "num" | "leg" | "op", value: string }
 const MAX_LEGS = 10
 // ponytail: "-" between word characters stays part of the symbol (futures symbols can contain it),
 // so binary minus needs spaces: "A - B". The formula dialog always emits spaced operators.
-const TOKEN = /\s*(?:(\d+(?:\.\d+)?(?![A-Za-z0-9_.]))|([A-Za-z0-9_.:]+(?:-[A-Za-z0-9_.:]+)*)|([-+*/()×÷]))\s*/y
+// A "(...)" directly after a symbol character belongs to the symbol: MEXC lists "MEXC_USDT_GOLD(XAUT)".
+// A formula never puts "(" straight after a symbol, there are no function calls.
+const SYMBOL_GROUP = "\\([A-Za-z0-9_.:]+\\)"
+const TOKEN = new RegExp(`\\s*(?:(\\d+(?:\\.\\d+)?(?![A-Za-z0-9_.]))|([A-Za-z0-9_.:]+(?:-[A-Za-z0-9_.:]+)*(?:${SYMBOL_GROUP})?)|([-+*/()×÷]))\\s*`, "y")
+const ATTACHED_GROUP = new RegExp(`(?<=[A-Za-z0-9_.:])${SYMBOL_GROUP}`, "g")
 const DISPLAY_OP: Record<string, string> = {"+": "+", "-": "−", "*": "×", "/": "÷"}
 
-export const isFormula = (coinraySymbol: string): boolean => /[\s+*/()×÷]/.test(`${coinraySymbol}`)
+export const isFormula = (coinraySymbol: string): boolean => /[\s+*/()×÷]/.test(`${coinraySymbol}`.replace(ATTACHED_GROUP, ""))
 
 function tokenize(formula: string): Token[] {
   const tokens: Token[] = []

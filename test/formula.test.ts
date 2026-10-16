@@ -14,6 +14,16 @@ describe("parseFormula", () => {
     expect(isFormula(`${A} / ${B}`)).toBe(true)
     expect(isFormula(A)).toBe(false)
     expect(isFormula("OKEXF_USDT_BTC-SWAP")).toBe(false)
+    expect(isFormula("MEXC_USDT_GOLD(XAUT)")).toBe(false)
+    expect(isFormula(`MEXC_USDT_GOLD(XAUT) / ${B}`)).toBe(true)
+    expect(isFormula(`(${A})`)).toBe(true)
+  })
+
+  test("a leg with a parenthesised base", () => {
+    const gold = "MEXC_USDT_GOLD(XAUT)"
+    expect(formulaLegs(parseFormula(`${gold} / ${B}`))).toEqual([gold, B])
+    expect(formulaLegs(parseFormula(`(${gold}) * 2`))).toEqual([gold])
+    expect(evalFormula(parseFormula(`(${A} + ${B}) * 2`), (leg: string) => ({[A]: 2, [B]: 3})[leg])).toBe(10)
   })
 
   test("precedence, parens, unary minus, aliases", () => {
