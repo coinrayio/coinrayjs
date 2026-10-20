@@ -63,8 +63,9 @@ export default class CurrentMarket extends EventEmitter {
 
   getMarket() {
     if (this.coinraySymbol) {
+      // undefined while the symbol is not (yet) in the cache, callers handle a missing market
       const market = this.coinrayCache.getMarket(this.coinraySymbol)
-      market.overridePrices(this.getPriceOverrides)
+      market?.overridePrices(this.getPriceOverrides)
       return market
     } else {
       throw new MarketNotFoundError(`Market not found: ${this.coinraySymbol}`)
