@@ -1,4 +1,13 @@
-# Unreleased
+# Version 2.0.25
+- CurrentMarket.getMarket returns undefined instead of crashing when the symbol is not in the cache yet
+
+# Version 2.0.24
+- Formulas: a "(...)" straight after a symbol is part of it, so MEXC_USDT_GOLD(XAUT) is a market, not a formula
+
+# Version 2.0.23
+- Formula candles from the proxy, FormulaMarket for watchlists
+
+# Version 2.0.21
 - Exchange.virtual: true for calculated exchanges (CRAY, CRAYF) that are never tradable, read from the exchange JSON `virtual` field (default false)
 
 # Version 2.0.20
