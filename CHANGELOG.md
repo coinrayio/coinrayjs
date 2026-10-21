@@ -1,3 +1,8 @@
+# Version 2.0.26
+- subscribeCandles: a listener added to a symbol+resolution that is already streaming gets the buffered snapshot (current candle and previousCandles), instead of waiting for the next trade
+- fetchCandles for seconds resolutions waits up to 3s for the websocket snapshot instead of returning []
+- The new-candle timer notifies the listeners present when it fires, not when it was armed
+
 # Version 2.0.25
 - CurrentMarket.getMarket returns undefined instead of crashing when the symbol is not in the cache yet
 
