@@ -61,6 +61,9 @@ export class CoinrayError extends Error {
   }
 }
 
+// how long a seconds-resolution fetch waits for the websocket snapshot of a stream it had to open
+const SECONDS_SNAPSHOT_WAIT_MS = 3000
+
 export default class Coinray {
   static I18n = I18n
 
@@ -552,6 +555,7 @@ export default class Coinray {
 
     if (this._candleListeners[candleId] && this._candleListeners[candleId].length > 0) {
       this._candleListeners[candleId].push(callback);
+      this.replayCandleSnapshot({coinraySymbol, resolution, candleId}, callback)
       return callback
     }
     this._candleListeners[candleId] = [callback];
@@ -591,15 +595,37 @@ export default class Coinray {
     return callback
   };
 
+  // The stream is already open, so its snapshot went out before this listener joined. Hand it the
+  // same snapshot from the buffered trades, as the first listener got it. Async like a real snapshot,
+  // and only to this listener: the others already have it.
+  private replayCandleSnapshot = ({coinraySymbol, resolution, candleId}, callback: (payload: any) => void) => {
+    queueMicrotask(() => {
+      if (!this._candleListeners[candleId]?.includes(callback)) return
+
+      // _tradesToLastCandle reverses its input in place, the buffer is shared
+      const trades = [...(this._tradeSnapshots[coinraySymbol] || [])]
+      const previousCandles = Coinray._tradesToLastCandle(resolution, trades)
+      if (previousCandles.length === 0 || !this._candles[candleId]) return
+
+      callback({
+        coinraySymbol,
+        resolution,
+        candle: this._candles[candleId],
+        previousCandles
+      })
+    })
+  }
+
   startNewCandleTimer = ({candleId, resolution, coinraySymbol}) => {
     if (this._timers[candleId]) {
       clearTimeout(this._timers[candleId])
     }
 
     let secondsToNextBucked = candleTime(0, resolution, new Date()) - new Date().getTime() / 1000
-    const callbacks = Object.values(this._candleListeners[candleId]) as [];
 
     this._timers[candleId] = setTimeout(() => {
+      // read at fire time, listeners may have joined or left since the timer was armed
+      const callbacks = Object.values(this._candleListeners[candleId] || []) as [];
       let currentBucket = candleTime(1, resolution, new Date()) * 1000
       let oldCandle = this._candles[candleId]
       if (oldCandle && currentBucket > oldCandle.time.getTime()) {
@@ -660,7 +686,8 @@ export default class Coinray {
     this.flushCache()
 
     if (resolution.endsWith("S")) {
-      const snapshot = await this.getWebsocketCandles(coinraySymbol, resolution)
+      // seconds candles only exist in the websocket snapshot; a fresh stream needs a round trip for it
+      const snapshot = await this.getWebsocketCandles(coinraySymbol, resolution, SECONDS_SNAPSHOT_WAIT_MS)
       return snapshot.filter((candle) => {
         let time = candle.time.getTime() / 1000
         return time >= start && time <= end
@@ -733,14 +760,17 @@ export default class Coinray {
     }
   }
 
-  getWebsocketCandles = async (coinraySymbol, resolution): Promise<Candle[]> => {
+  // waitMs 0 only takes a snapshot that is already buffered (an open stream replays it in a microtask)
+  getWebsocketCandles = async (coinraySymbol, resolution, waitMs = 0): Promise<Candle[]> => {
     const subscribe = new Promise(resolve => {
       let timeout = setTimeout(() => {
         this.unsubscribeCandles({coinraySymbol, resolution}, onSnapshot)
         resolve([])
-      }, 0)
+      }, waitMs)
 
       const onSnapshot = ({previousCandles}) => {
+        // a new-bucket tick carries no previous candles, only a snapshot does
+        if (!previousCandles?.length) return
         clearTimeout(timeout)
         this.unsubscribeCandles({coinraySymbol, resolution}, onSnapshot)
         resolve(previousCandles)
